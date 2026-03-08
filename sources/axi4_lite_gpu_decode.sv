@@ -1,7 +1,7 @@
 module axi4_lite_gpu_decode #(
     parameter FRAME_WIDTH_SCALED = 640,
     parameter FRAME_HEIGHT_SCALED = 480,
-    parameter ADDRESS_WIDTH = 8,
+    parameter ADDRESS_WIDTH = 16,
     parameter DATA_WIDTH = 32,
     parameter FBUF_ADDR_WIDTH = 19,
     parameter FBUF_DATA_WIDTH = 8
