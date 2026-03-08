@@ -20,6 +20,12 @@ module axi4_lite_gpu_ring_buffer #(
     input decoder_write_processing_done
 );
 
+generate
+    if (2 ** $clog2(BUFFER_SIZE) != BUFFER_SIZE) begin
+        $error("AXI4-LITE GPU buffer size must be a power of 2 (%d)", BUFFER_SIZE);
+    end
+endgenerate
+
 wire buffer_full;
 wire buffer_empty;
 

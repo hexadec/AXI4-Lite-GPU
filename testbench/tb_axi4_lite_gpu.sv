@@ -161,7 +161,7 @@ initial begin
     #10
     $display("Writing rect START DRAW");
     axi4_lite_write(.address(32'h100), .data(32'h00));
-    #600
+    #10
     $display("Starting triangle write test...");
     $display("Writing triangle XY0");
     axi4_lite_write(.address(32'h204), .data(32'({16'd10, 16'd1})));
@@ -177,7 +177,7 @@ initial begin
     #10
     $display("Writing triangle START DRAW");
     axi4_lite_write(.address(32'h200), .data(32'h00));
-    #1500
+    #10
     $display("Starting circle write test...");
     $display("Writing circle CENTER");
     axi4_lite_write(.address(32'h304), .data(32'({16'd20, 16'd20})));
@@ -190,7 +190,7 @@ initial begin
     #10
     $display("Writing circle START");
     axi4_lite_write(.address(32'h300), .data(32'h00));
-    #2000
+    #4000
     $display("Basic read and write test finished");
     $finish;
 end

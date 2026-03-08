@@ -73,6 +73,34 @@ reg [AXI_DATA_WIDTH - 1 : 0] write_data;
 reg write_data_ok;
 reg s_axi_ctrl_wready_int;
 
+wire decoder_write_processing_start;
+wire decoder_write_processing_ok;
+wire decoder_write_processing_done;
+wire [15:0] decoder_write_address;
+wire [AXI_DATA_WIDTH - 1:0] decoder_write_data;
+
+axi4_lite_gpu_ring_buffer #(
+    .ADDRESS_WIDTH(16),
+    .DATA_WIDTH(AXI_DATA_WIDTH),
+    .BUFFER_SIZE(32)
+) axi4_lite_gpu_ring_buffer_inst (
+    // AXI Clock
+    .clk(s_axi_ctrl_aclk),
+    .rst_n(s_axi_ctrl_aresetn),
+    // Write data channel (input from GPU wrapper)
+    .gpu_write_processing_start(write_processing_start),
+    .gpu_write_address(write_address[15:0]),
+    .gpu_write_data(write_data),
+    .gpu_write_processing_ok(write_processing_ok_int),
+    .gpu_write_processing_done(write_processing_done),
+    // Write data channel (output to decoder)
+    .decoder_write_processing_start(decoder_write_processing_start),
+    .decoder_write_address(decoder_write_address),
+    .decoder_write_data(decoder_write_data),
+    .decoder_write_processing_ok(decoder_write_processing_ok),
+    .decoder_write_processing_done(decoder_write_processing_done)
+);
+
 axi4_lite_gpu_decode #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
     .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
@@ -88,11 +116,11 @@ axi4_lite_gpu_decode #(
     .read_data(read_data_int),
     .read_resp_ok(read_resp_ok_int),
     .read_processing_done(read_processing_done),
-    .write_processing_start(write_processing_start),
-    .write_address(write_address[15:0]),
-    .write_data(write_data),
-    .write_processing_ok(write_processing_ok_int),
-    .write_processing_done(write_processing_done),
+    .write_processing_start(decoder_write_processing_start),
+    .write_address(decoder_write_address),
+    .write_data(decoder_write_data),
+    .write_processing_ok(decoder_write_processing_ok),
+    .write_processing_done(decoder_write_processing_done),
     .fbuf_rst_busy(fbuf_rst_busy),
     .fbuf_en_wr(fbuf_en_wr),
     .fbuf_wrea(fbuf_wrea),
