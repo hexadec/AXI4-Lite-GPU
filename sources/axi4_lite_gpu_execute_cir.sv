@@ -188,8 +188,8 @@ always_ff @(posedge clk) begin
                 end
             end
             
-            dist_x_squared <= max(signed'(pos_x_calc) - center_x_int, center_x_int - signed'(pos_x_calc)) * max(signed'(pos_x_calc) - center_x_int, center_x_int - signed'(pos_x_calc));
-            dist_y_squared <= max(signed'(pos_y_calc) - center_y_int, center_y_int - signed'(pos_y_calc)) * max(signed'(pos_y_calc) - center_y_int, center_y_int - signed'(pos_y_calc));
+            dist_x_squared <= (signed'(pos_x_calc) - center_x_int) * (signed'(pos_x_calc) - center_x_int);
+            dist_y_squared <= (signed'(pos_y_calc) - center_y_int) * (signed'(pos_y_calc) - center_y_int);
         end else if (state == BUSY_EVAL) begin
             if (pos_x_calc < max_x) begin
                 pos_x_calc <= pos_x_calc + 1;

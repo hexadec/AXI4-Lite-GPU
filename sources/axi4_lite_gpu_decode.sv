@@ -36,6 +36,7 @@ reg read_resp_ok_reg;
 
 reg [ADDRESS_WIDTH - 1 : 0] write_addr_reg;
 reg [DATA_WIDTH - 1 : 0] write_data_reg;
+reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_single_addr_reg;
 
 assign read_processing_done = !rst_n ? 0 : read_processing_done_reg;
 assign read_data = !rst_n ? 0 : read_data_reg;
@@ -310,7 +311,7 @@ always_comb begin
             fbuf_en_wr = 1;
             fbuf_wrea = 1;
             fbuf_data = write_data_reg[7:0];
-            fbuf_addr = write_data_reg[31:20] + write_data_reg[19:8] * FRAME_WIDTH_SCALED;
+            fbuf_addr = fbuf_single_addr_reg;
         end
         BUSY_RECT: begin
             fbuf_rst_req_n = 1;
@@ -382,10 +383,12 @@ always_ff @(posedge clk) begin
     if (!rst_n) begin
         write_addr_reg <= 0;
         write_data_reg <= 0;
+        fbuf_single_addr_reg <= 0;
     end else begin
         if (write_processing_start && execute_unit_state == IDLE) begin
             write_addr_reg <= write_address;
             write_data_reg <= write_data;
+            fbuf_single_addr_reg <= write_data[31:20] + write_data[19:8] * FRAME_WIDTH_SCALED;
         end
     end
 end

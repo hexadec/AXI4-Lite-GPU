@@ -15,3 +15,4 @@ block_design
 /*.bit
 /reports/*.txt
 ps7_init*
+xvlog.pb
