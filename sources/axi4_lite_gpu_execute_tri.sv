@@ -50,6 +50,9 @@ reg signed [23:0] a, b, c;
 reg signed [23:0] xy21;
 reg signed [23:0] xy02;
 reg signed [23:0] xy10;
+
+reg signed [12:0] y2my1, x2mx1, y0my2, x0mx2, y1my0, x1mx0;
+
 reg [2:0] signs;
 
 reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
@@ -92,7 +95,7 @@ always_comb begin
             next_state = BUSY_CALC_INCR;
         end
     end else if (state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
-        if (pos_x == max_x && pos_y == max_y) begin
+        if (pos_y > max_y) begin
             next_state = DONE;
         end else begin
             next_state = BUSY_EVAL;
@@ -189,6 +192,12 @@ always_ff @(posedge clk) begin
         xy21 <= 0;
         xy02 <= 0;
         xy10 <= 0;
+        y2my1 <= 0;
+        x2mx1 <= 0;
+        y0my2 <= 0;
+        x0mx2 <= 0;
+        y1my0 <= 0;
+        x1mx0 <= 0;
         fbuf_addr_int <= 0;
     end else begin
         if (state == IDLE) begin
@@ -204,25 +213,30 @@ always_ff @(posedge clk) begin
                 xy21 <= x2_int * y1_int - y2_int * x1_int;
                 xy02 <= x0_int * y2_int - y0_int * x2_int;
                 xy10 <= x1_int * y0_int - y1_int * x0_int;
+
+                y2my1 <= y2_int - y1_int;
+                x2mx1 <= x2_int - x1_int;
+                y0my2 <= y0_int - y2_int;
+                x0mx2 <= x0_int - x2_int;
+                y1my0 <= y1_int - y0_int;
+                x1mx0 <= x1_int - x0_int;
             end
         end else if (state == BUSY_PREPARE || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
             if (state == BUSY_PREPARE) begin
-                signs[0] <= ((y2_int - y1_int) * x0_int - (x2_int - x1_int) * y0_int + xy21) < 8'sd0;
-                signs[1] <= ((y0_int - y2_int) * x1_int - (x0_int - x2_int) * y1_int + xy02) < 8'sd0;
-                signs[2] <= ((y1_int - y0_int) * x2_int - (x1_int - x0_int) * y2_int + xy10) < 8'sd0;
+                signs[0] <= (y2my1 * x0_int - x2mx1 * y0_int + xy21) < 8'sd0;
+                signs[1] <= (y0my2 * x1_int - x0mx2 * y1_int + xy02) < 8'sd0;
+                signs[2] <= (y1my0 * x2_int - x1mx0 * y2_int + xy10) < 8'sd0;
             end
             
-            a <= (y2_int - y1_int) * signed'(pos_x) - (x2_int - x1_int) * signed'(pos_y) + xy21;
-            b <= (y0_int - y2_int) * signed'(pos_x) - (x0_int - x2_int) * signed'(pos_y) + xy02;
-            c <= (y1_int - y0_int) * signed'(pos_x) - (x1_int - x0_int) * signed'(pos_y) + xy10;
+            a <= y2my1 * signed'(pos_x) - x2mx1 * signed'(pos_y) + xy21;
+            b <= y0my2 * signed'(pos_x) - x0mx2 * signed'(pos_y) + xy02;
+            c <= y1my0 * signed'(pos_x) - x1mx0 * signed'(pos_y) + xy10;
         end else if (state == BUSY_EVAL) begin
             if (pos_x < max_x) begin
                 pos_x <= pos_x + 1;
             end else begin
-                if (pos_y < max_y) begin
-                    pos_x <= min_x;
-                    pos_y <= pos_y + 1;
-                end
+                pos_x <= min_x;
+                pos_y <= pos_y + 1;
             end
             fbuf_addr_int <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
         end else if (state == DONE || state == ERR) begin
@@ -239,6 +253,12 @@ always_ff @(posedge clk) begin
             xy21 <= 0;
             xy02 <= 0;
             xy10 <= 0;
+            y2my1 <= 0;
+            x2mx1 <= 0;
+            y0my2 <= 0;
+            x0mx2 <= 0;
+            y1my0 <= 0;
+            x1mx0 <= 0;
             fbuf_addr_int <= 0;
         end
     end

@@ -36,9 +36,11 @@ reg signed [13:0] center_x_int, center_y_int;
 reg signed [13:0] radius_int;
 reg [COLOR_WIDTH - 1:0] color_int;
 
-reg [11:0] pos_x_fbuf, pos_y_fbuf, pos_x_calc, pos_y_calc;
+reg [11:0] pos_x, pos_y;
 reg [11:0] max_x, max_y;
 reg [11:0] min_x, min_y;
+
+reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
 
 reg signed [24:0] dist_x_squared, dist_y_squared;
 reg signed [24:0] radius_squared;
@@ -80,7 +82,7 @@ always_comb begin
             next_state = BUSY_CALC_INCR;
         end
     end else if (state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
-        if (pos_x_fbuf == max_x && pos_y_fbuf == max_y) begin
+        if (pos_y > max_y) begin
             next_state = DONE;
         end else begin
             next_state = BUSY_EVAL;
@@ -154,13 +156,12 @@ always_ff @(posedge clk) begin
         min_y <= 0;
         max_x <= 0;
         max_y <= 0;
-        pos_x_fbuf <= 0;
-        pos_y_fbuf <= 0;
-        pos_x_calc <= 0;
-        pos_y_calc <= 0;
+        pos_x <= 0;
+        pos_y <= 0;
         dist_x_squared <= 0;
         dist_y_squared <= 0;
         radius_squared <= 0;
+        fbuf_addr_int <= 0;
     end else begin
         if (state == IDLE) begin
             if (start && center_valid_int && radius_valid_int && color_valid_int) begin
@@ -169,48 +170,33 @@ always_ff @(posedge clk) begin
                 max_x <= min(FRAME_WIDTH_SCALED - 1, max(0, center_x_int + radius_int));
                 max_y <= min(FRAME_HEIGHT_SCALED - 1, max(0, center_x_int + radius_int));
 
-                pos_x_fbuf <= max(0, min(center_x_int - radius_int, FRAME_WIDTH_SCALED - 1)); // == min_x
-                pos_y_fbuf <= max(0, min(center_y_int - radius_int, FRAME_HEIGHT_SCALED - 1)); // == min_y
-                pos_x_calc <= max(0, min(center_x_int - radius_int, FRAME_WIDTH_SCALED - 1)); // == min_x
-                pos_y_calc <= max(0, min(center_y_int - radius_int, FRAME_HEIGHT_SCALED - 1)); // == min_y
+                pos_x <= max(0, min(center_x_int - radius_int, FRAME_WIDTH_SCALED - 1)); // == min_x
+                pos_y <= max(0, min(center_y_int - radius_int, FRAME_HEIGHT_SCALED - 1)); // == min_y
 
                 radius_squared <= radius_int * radius_int;
             end
         end else if (state == BUSY_PREPARE || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
-            if (state != BUSY_PREPARE) begin
-                if (pos_x_fbuf < max_x) begin
-                    pos_x_fbuf <= pos_x_fbuf + 1;
-                end else begin
-                    if (pos_y_fbuf < max_y) begin
-                        pos_x_fbuf <= min_x;
-                        pos_y_fbuf <= pos_y_fbuf + 1;
-                    end
-                end
-            end
-            
-            dist_x_squared <= (signed'(pos_x_calc) - center_x_int) * (signed'(pos_x_calc) - center_x_int);
-            dist_y_squared <= (signed'(pos_y_calc) - center_y_int) * (signed'(pos_y_calc) - center_y_int);
+            dist_x_squared <= (signed'(pos_x) - center_x_int) * (signed'(pos_x) - center_x_int);
+            dist_y_squared <= (signed'(pos_y) - center_y_int) * (signed'(pos_y) - center_y_int);
         end else if (state == BUSY_EVAL) begin
-            if (pos_x_calc < max_x) begin
-                pos_x_calc <= pos_x_calc + 1;
+            if (pos_x < max_x) begin
+                pos_x <= pos_x + 1;
             end else begin
-                if (pos_y_calc < max_y) begin
-                    pos_x_calc <= min_x;
-                    pos_y_calc <= pos_y_calc + 1;
-                end
+                pos_x <= min_x;
+                pos_y <= pos_y + 1;
             end
+            fbuf_addr_int <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
         end else if (state == DONE || state == ERR) begin
             min_x <= 0;
             min_y <= 0;
             max_x <= 0;
             max_y <= 0;
-            pos_x_fbuf <= 0;
-            pos_y_fbuf <= 0;
-            pos_x_calc <= 0;
-            pos_y_calc <= 0;
+            pos_x <= 0;
+            pos_y <= 0;
             dist_x_squared <= 0;
             dist_y_squared <= 0;
             radius_squared <= 0;
+            fbuf_addr_int <= 0;
         end
     end
 end
@@ -218,7 +204,7 @@ end
 
 assign fbuf_en_wr = state == BUSY_CALC_WR_INCR;
 assign fbuf_wrea = state == BUSY_CALC_WR_INCR;
-assign fbuf_addr = state == BUSY_CALC_WR_INCR ? pos_y_fbuf * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x_fbuf : 0;
+assign fbuf_addr = state == BUSY_CALC_WR_INCR ? fbuf_addr_int : 0;
 assign fbuf_data = state == BUSY_CALC_WR_INCR ? color_int : 0;
 
 endmodule

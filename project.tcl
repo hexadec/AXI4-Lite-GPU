@@ -117,6 +117,8 @@ set_property -dict [list \
   CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {300} \
   CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {400} \
   CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
+  CONFIG.PCW_EN_CLK1_PORT {1} \
+  CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {140} \
   CONFIG.PCW_USE_M_AXI_GP0 {1} \
   CONFIG.PCW_ENET0_PERIPHERAL_ENABLE {0} \
   CONFIG.PCW_QSPI_GRP_SINGLE_SS_ENABLE {0} \
@@ -254,13 +256,13 @@ set_property CONFIG.kRstActiveHigh {false} [get_bd_cells rgb2dvi_0]
 endgroup
 
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins proc_sys_reset_0/ext_reset_in]
-connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins proc_sys_reset_0/slowest_sync_clk]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins proc_sys_reset_0/slowest_sync_clk]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins clk_wiz_0/clk_in1]
-connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK]
-connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins test_pattern_generat_0/clk]
-connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins framebuffer_0/clk_wr]
-connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins axi4_lite_gpu_0/s_axi_ctrl_aclk]
-connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins mux_sel_debounce_0/clk]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins test_pattern_generat_0/clk]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins framebuffer_0/clk_wr]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins axi4_lite_gpu_0/s_axi_ctrl_aclk]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins mux_sel_debounce_0/clk]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins clk_wiz_0/resetn]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins test_pattern_generat_0/rst_n]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins axi4_lite_gpu_0/s_axi_ctrl_aresetn]
@@ -305,9 +307,9 @@ connect_bd_net [get_bd_pins fbuf2rgb_0/pixel_fbuf_address] [get_bd_pins framebuf
 connect_bd_net [get_bd_pins fbuf2rgb_0/pixel_fbuf_address_valid] [get_bd_pins framebuffer_0/en_rd]
 
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \
-  Clk_master { /processing_system7_0/FCLK_CLK0} \
-  Clk_slave {/processing_system7_0/FCLK_CLK0} \
-  Clk_xbar {/processing_system7_0/FCLK_CLK0} \
+  Clk_master { /processing_system7_0/FCLK_CLK1} \
+  Clk_slave {/processing_system7_0/FCLK_CLK1} \
+  Clk_xbar {/processing_system7_0/FCLK_CLK1} \
   Master {/processing_system7_0/M_AXI_GP0} \
   Slave {/axi4_lite_gpu_0/s_axi_ctrl} \
   ddr_seg {Auto} \
