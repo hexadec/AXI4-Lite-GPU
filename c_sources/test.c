@@ -3,6 +3,13 @@
 #include "platform.h"
 #include "xil_io.h"
 
+void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x404, ((uint32_t) x0) << 16 | ((uint32_t) y0));
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x408, ((uint32_t) x1) << 16 | ((uint32_t) y1));
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x40C, ((uint32_t) color));
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x400, 0);
+}
+
 void drawCircle(uint16_t center_x, uint16_t center_y, uint16_t radius, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x304, ((uint32_t) center_x) << 16 | ((uint32_t) center_y));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x308, ((uint32_t) radius));
@@ -42,6 +49,7 @@ int main()
     drawRect(width / 4, height / 4, width * 3 / 4, height * 3 / 4, 0b11111100U);
     drawTriangle(width * 3 / 4, height / 4, width * 3 / 4, height * 3 / 4, width / 4, height * 3 / 4, 0b11100000U);
     drawCircle(width / 8, height / 8, 10, 0b00000011U);
+    drawLine(width / 6, height / 6, width * 4 / 6, height * 2 / 6, 0b10000010U);
     drawPixel(width / 2, height / 2, 0b11111111U);
     cleanup_platform();
     return 0;

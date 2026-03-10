@@ -180,10 +180,56 @@ axi4_lite_gpu_execute_cir #(
     .fbuf_data(cir_fbuf_data)
 );
 
+wire line_start;
+wire line_busy;
+wire line_done;
+wire line_err;
+
+wire line_xy0_valid, line_xy1_valid;
+wire [11:0] line_x0, line_y0, line_x1, line_y1;
+wire line_color_valid;
+wire [7:0] line_color;
+
+wire line_fbuf_en_wr;
+wire line_fbuf_wrea;
+wire [FBUF_ADDR_WIDTH - 1 : 0] line_fbuf_addr;
+wire [FBUF_DATA_WIDTH - 1 : 0] line_fbuf_data;
+
+axi4_lite_gpu_execute_line #(
+    .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
+    .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
+    .COLOR_WIDTH(8),
+    .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
+    .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
+) axi4_lite_gpu_execute_line_inst (
+    .clk(clk),
+    .rst_n(rst_n),
+
+    .start(line_start),
+    .busy(line_busy),
+    .done(line_done),
+    .err(line_err),
+
+    .xy0_valid(line_xy0_valid),
+    .x0(line_x0),
+    .y0(line_y0),
+    .xy1_valid(line_xy1_valid),
+    .x1(line_x1),
+    .y1(line_y1),
+    .color_valid(line_color_valid),
+    .color(line_color),
+
+    .fbuf_en_wr(line_fbuf_en_wr),
+    .fbuf_wrea(line_fbuf_wrea),
+    .fbuf_addr(line_fbuf_addr),
+    .fbuf_data(line_fbuf_data)
+);
+
 enum reg [4:0] {IDLE = 0, BUSY_SINGLE, BUSY_RESET, 
                 BUSY_RECT, LOAD_RECT_COORDS_LEFT, LOAD_RECT_COORDS_RIGHT, LOAD_RECT_COLOR,
                 BUSY_TRI, LOAD_TRI_COORDS_XY0, LOAD_TRI_COORDS_XY1, LOAD_TRI_COORDS_XY2, LOAD_TRI_COLOR,
-                BUSY_CIR, LOAD_CIR_COORD_CENTER, LOAD_CIR_RADIUS, LOAD_CIR_COLOR} execute_unit_state, next_state;
+                BUSY_CIR, LOAD_CIR_COORDS_CENTER, LOAD_CIR_RADIUS, LOAD_CIR_COLOR,
+                BUSY_LINE, LOAD_LINE_COORDS_XY0, LOAD_LINE_COORDS_XY1, LOAD_LINE_COLOR} execute_unit_state, next_state;
 
 assign write_processing_ok = !rst_n ? 0 : (execute_unit_state == IDLE && write_processing_start) ? 1 : 0;
 assign write_processing_done = !rst_n ? 0 : (execute_unit_state == IDLE && write_processing_start) ? 1 : 0;
@@ -230,11 +276,19 @@ always_comb begin
                         32'h300:
                             next_state = BUSY_CIR;
                         32'h304:
-                            next_state = LOAD_CIR_COORD_CENTER;
+                            next_state = LOAD_CIR_COORDS_CENTER;
                         32'h308:
                             next_state = LOAD_CIR_RADIUS;
                         32'h30C:
                             next_state = LOAD_CIR_COLOR;
+                        32'h400:
+                            next_state = BUSY_LINE;
+                        32'h404:
+                            next_state = LOAD_LINE_COORDS_XY0;
+                        32'h408:
+                            next_state = LOAD_LINE_COORDS_XY1;
+                        32'h40C:
+                            next_state = LOAD_LINE_COLOR;
                     endcase
                 end
             end
@@ -253,6 +307,10 @@ always_comb begin
             BUSY_CIR:
                 if ((cir_busy || cir_start) && !cir_done && !cir_err) begin
                     next_state = BUSY_CIR;
+                end
+            BUSY_LINE:
+                if ((line_busy || line_start) && !line_done && !line_err) begin
+                    next_state = BUSY_LINE;
                 end
         endcase
     end
@@ -286,7 +344,7 @@ assign tri_color = write_data_reg[7:0];
 
 assign tri_start = (execute_unit_state == BUSY_TRI) && !tri_busy && !tri_done && !tri_err;
 
-assign cir_center_valid = (execute_unit_state == LOAD_CIR_COORD_CENTER);
+assign cir_center_valid = (execute_unit_state == LOAD_CIR_COORDS_CENTER);
 assign cir_radius_valid = (execute_unit_state == LOAD_CIR_RADIUS);
 assign cir_center_x = write_data_reg[27:16];
 assign cir_center_y = write_data_reg[11:0];
@@ -296,6 +354,18 @@ assign cir_color_valid = (execute_unit_state == LOAD_CIR_COLOR);
 assign cir_color = write_data_reg[7:0];
 
 assign cir_start = (execute_unit_state == BUSY_CIR) && !cir_busy && !cir_done && !cir_err;
+
+assign line_xy0_valid = (execute_unit_state == LOAD_LINE_COORDS_XY0);
+assign line_xy1_valid = (execute_unit_state == LOAD_LINE_COORDS_XY1);
+assign line_x0 = write_data_reg[27:16];
+assign line_y0 = write_data_reg[11:0];
+assign line_x1 = write_data_reg[27:16];
+assign line_y1 = write_data_reg[11:0];
+
+assign line_color_valid = (execute_unit_state == LOAD_LINE_COLOR);
+assign line_color = write_data_reg[7:0];
+
+assign line_start = (execute_unit_state == BUSY_LINE) && !line_busy && !line_done && !line_err;
 
 always_comb begin
     case (execute_unit_state)
@@ -333,6 +403,13 @@ always_comb begin
             fbuf_wrea = cir_fbuf_wrea;
             fbuf_addr = cir_fbuf_addr;
             fbuf_data = cir_fbuf_data;
+        end
+        BUSY_LINE: begin
+            fbuf_rst_req_n = 1;
+            fbuf_en_wr = line_fbuf_en_wr;
+            fbuf_wrea = line_fbuf_wrea;
+            fbuf_addr = line_fbuf_addr;
+            fbuf_data = line_fbuf_data;
         end
         default: begin
             fbuf_rst_req_n = 1;

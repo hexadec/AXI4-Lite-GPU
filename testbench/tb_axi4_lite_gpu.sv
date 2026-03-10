@@ -190,6 +190,19 @@ initial begin
     #10
     $display("Writing circle START");
     axi4_lite_write(.address(32'h300), .data(32'h00));
+    #10
+    $display("Starting line write test...");
+    $display("Writing line XY0");
+    axi4_lite_write(.address(32'h404), .data(32'({16'd20, 16'd40})));
+    #10
+    $display("Writing line XY1");
+    axi4_lite_write(.address(32'h408), .data(32'({16'd40, 16'd10})));
+    #10
+    $display("Writing line COLOR");
+    axi4_lite_write(.address(32'h40C), .data(32'b10000010));
+    #10
+    $display("Writing line START");
+    axi4_lite_write(.address(32'h400), .data(32'h00));
     #4000
     $display("Basic read and write test finished");
     $finish;
