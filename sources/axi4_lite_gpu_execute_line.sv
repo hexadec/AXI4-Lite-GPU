@@ -37,7 +37,7 @@ reg signed [12:0] x0_int, y0_int, x1_int, y1_int;
 reg [COLOR_WIDTH - 1 : 0] color_int;
 
 reg signed [12:0] pos_x, pos_y, dx, dy;
-reg signed [23:0] error;
+reg signed [17:0] error, error_dx, error_dy;
 reg signed [1:0] sx, sy;
 
 reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
@@ -137,6 +137,8 @@ always_ff @(posedge clk) begin
         sx <= 0;
         sy <= 0;
         error <= 0;
+        error_dx <= 0;
+        error_dy <= 0;
         fbuf_addr_int <= 0;
     end else begin
         if (state == IDLE) begin
@@ -152,17 +154,26 @@ always_ff @(posedge clk) begin
             end
         end else if (state == BUSY_PREPARE) begin
             error <= (dx + dy) * 2;
+            error_dx <= (dx + dy) * 2 + dx;
+            error_dy <= (dx + dy) * 2 + dy;
+            fbuf_addr_int <= (pos_y) * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
         end else if (state == BUSY) begin
             if (error >= dy) begin
-                if (error + dy <= dx) begin
-                    error <= error + dx + dy;
+                if (error_dy <= dx) begin
+                    error <= error_dx + dy;
+                    error_dx <= error_dy + 2 * dx;
+                    error_dy <= error_dy + dx + dy;
                     pos_y <= pos_y + sy;
                 end else begin
-                    error <= error + dy;
+                    error <= error_dy;
+                    error_dx <= error_dx + dy;
+                    error_dy <= error_dy + dy;
                 end
                 pos_x <= pos_x + sx;
             end else if (error <= dx) begin
-                error <= error + dx;
+                error <= error_dx;
+                error_dx <= error_dx + dx;
+                error_dy <= error_dy + dx;
                 pos_y <= pos_y + sy;
             end
             fbuf_addr_int <= (pos_y) * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
@@ -174,6 +185,8 @@ always_ff @(posedge clk) begin
             sx <= 0;
             sy <= 0;
             error <= 0;
+            error_dx <= 0;
+            error_dy <= 0;
             fbuf_addr_int <= 0;
         end
     end

@@ -33,13 +33,19 @@ module axi4_lite_gpu #(
 
     // Framebuffer BRAM connection (write only)
     input fbuf_rst_busy,
-    output fbuf_en_wr,
-    output fbuf_wrea,
-    output [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr,
-    output [FBUF_DATA_WIDTH - 1 : 0] fbuf_data,
-    output fbuf_rst_req_n
+    output reg fbuf_en_wr,
+    output reg fbuf_wrea,
+    output reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr,
+    output reg [FBUF_DATA_WIDTH - 1 : 0] fbuf_data,
+    output reg fbuf_rst_req_n
 );
 
+
+wire fbuf_en_wr_int;
+wire fbuf_wrea_int;
+wire [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
+wire [FBUF_DATA_WIDTH - 1 : 0] fbuf_data_int;
+wire fbuf_rst_req_n_int;
 
 // Store read address from R channel and manage responses
 reg read_transaction_ok;
@@ -122,12 +128,20 @@ axi4_lite_gpu_decode #(
     .write_processing_ok(decoder_write_processing_ok),
     .write_processing_done(decoder_write_processing_done),
     .fbuf_rst_busy(fbuf_rst_busy),
-    .fbuf_en_wr(fbuf_en_wr),
-    .fbuf_wrea(fbuf_wrea),
-    .fbuf_addr(fbuf_addr),
-    .fbuf_data(fbuf_data),
-    .fbuf_rst_req_n(fbuf_rst_req_n)
+    .fbuf_en_wr(fbuf_en_wr_int),
+    .fbuf_wrea(fbuf_wrea_int),
+    .fbuf_addr(fbuf_addr_int),
+    .fbuf_data(fbuf_data_int),
+    .fbuf_rst_req_n(fbuf_rst_req_n_int)
 );
+
+always @(posedge s_axi_ctrl_aclk) begin
+    fbuf_en_wr <= fbuf_en_wr_int;
+    fbuf_wrea <= fbuf_wrea_int;
+    fbuf_addr <= fbuf_addr_int;
+    fbuf_data <= fbuf_data_int;
+    fbuf_rst_req_n <= fbuf_rst_req_n_int;
+end
 
 localparam RESP_OKAY = 2'b00;
 localparam RESP_SLVERR = 2'b10;

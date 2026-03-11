@@ -65,8 +65,8 @@ initial begin
     rst_req_n = 0;
     #10
     rst_req_n = 1;
-    // Start counter from 2: first address is reset immediately, and +1 tick has passed
-    for (int counter = 2; counter < FRAME_WIDTH * FRAME_HEIGHT; counter++) begin
+    // Start counter from 1: +1 tick has passed
+    for (int counter = 1; counter < FRAME_WIDTH * FRAME_HEIGHT; counter++) begin
         #10
         assert(rst_busy == 1) else $error("RST_BUSY should be HIGH");
     end

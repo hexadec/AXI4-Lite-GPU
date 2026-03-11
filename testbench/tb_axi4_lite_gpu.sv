@@ -166,10 +166,10 @@ initial begin
     $display("Writing triangle XY0");
     axi4_lite_write(.address(32'h204), .data(32'({16'd10, 16'd1})));
     #10
-    $display("Writing triangle XY0");
+    $display("Writing triangle XY1");
     axi4_lite_write(.address(32'h208), .data(32'({16'd1, 16'd5})));
     #10
-    $display("Writing triangle XY0");
+    $display("Writing triangle XY2");
     axi4_lite_write(.address(32'h20C), .data(32'({16'd3, 16'd3})));
     #10
     $display("Writing triangle COLOR");

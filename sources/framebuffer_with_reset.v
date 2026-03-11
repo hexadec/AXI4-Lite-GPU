@@ -24,20 +24,20 @@ wire [ADDR_WIDTH - 1 : 0] addr_wr_int;
 wire [DATA_WIDTH - 1:0] din_int;
 
 assign rst_busy = rst_busy_reg || !rst_req_n;
-assign en_wr_int = rst_busy ? 1 : en_wr;
-assign wrea_int = rst_busy ? 1 : wrea;
-assign addr_wr_int = rst_busy ? reset_counter : addr_wr;
-assign din_int = rst_busy ? 0 : din;
+assign en_wr_int = rst_busy_reg ? 1 : en_wr;
+assign wrea_int = rst_busy_reg ? 1 : wrea;
+assign addr_wr_int = rst_busy_reg ? reset_counter : addr_wr;
+assign din_int = rst_busy_reg ? 0 : din;
 
 always @(posedge clk_wr) begin
     if (!rst_req_n) begin
-        reset_counter <= 1; // NOT A drawback: if rst_req_n is asserted while reset_counter has not finished, addr 0 is skipped
+        reset_counter <= 0;
         rst_busy_reg <= 1;
-    end else if (reset_counter > 0 && reset_counter < NUMBER_OF_PIXELS - 1) begin
+    end else if (reset_counter < NUMBER_OF_PIXELS - 1) begin
         reset_counter <= reset_counter + 1;
         rst_busy_reg <= 1;
     end else begin
-        reset_counter <= 0;
+        reset_counter <= NUMBER_OF_PIXELS;
         rst_busy_reg <= 0;
     end
 end

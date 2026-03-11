@@ -26,7 +26,7 @@ module axi4_lite_gpu_execute_cir #(
     output [FBUF_DATA_WIDTH - 1 : 0] fbuf_data
 );
 
-enum logic [3:0] {IDLE, BUSY_PREPARE, BUSY_EVAL, BUSY_CALC_WR_INCR, BUSY_CALC_INCR, DONE, ERR} state, next_state;
+enum logic [3:0] {IDLE, BUSY_PREPARE_1, BUSY_PREPARE_2, BUSY_EVAL, BUSY_CALC_WR_INCR, BUSY_CALC_INCR, DONE, ERR} state, next_state;
 
 reg center_valid_int;
 reg radius_valid_int;
@@ -42,10 +42,10 @@ reg [11:0] min_x, min_y;
 
 reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
 
-reg signed [24:0] dist_x_squared, dist_y_squared;
+reg signed [24:0] dist_x_squared, dist_y_squared, posx_m_centerx, posy_m_centery;
 reg signed [24:0] radius_squared;
 
-assign busy = state == BUSY_PREPARE || state == BUSY_EVAL || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR;
+assign busy = state == BUSY_PREPARE_1 || state == BUSY_PREPARE_2 || state == BUSY_EVAL || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR;
 assign done = state == DONE;
 assign err = state == ERR;
 
@@ -67,13 +67,15 @@ always_comb begin
             (radius_valid && (radius >= FRAME_WIDTH_SCALED && radius >= FRAME_HEIGHT_SCALED))) begin
             next_state = ERR;
         end else if (start && center_valid_int && radius_valid_int && color_valid_int) begin
-            next_state = BUSY_PREPARE;
+            next_state = BUSY_PREPARE_1;
         end else if (start) begin
             next_state = ERR;
         end else begin
             next_state = IDLE;
         end
-    end else if (state == BUSY_PREPARE) begin
+    end else if (state == BUSY_PREPARE_1) begin
+        next_state = BUSY_PREPARE_2;
+    end else if (state == BUSY_PREPARE_2) begin
         next_state = BUSY_EVAL;
     end else if (state == BUSY_EVAL) begin
         if (dist_x_squared + dist_y_squared <= radius_squared) begin
@@ -158,6 +160,8 @@ always_ff @(posedge clk) begin
         max_y <= 0;
         pos_x <= 0;
         pos_y <= 0;
+        posx_m_centerx <= 0;
+        posy_m_centery <= 0;
         dist_x_squared <= 0;
         dist_y_squared <= 0;
         radius_squared <= 0;
@@ -175,10 +179,12 @@ always_ff @(posedge clk) begin
 
                 radius_squared <= radius_int * radius_int;
             end
-        end else if (state == BUSY_PREPARE || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
-            dist_x_squared <= (signed'(pos_x) - center_x_int) * (signed'(pos_x) - center_x_int);
-            dist_y_squared <= (signed'(pos_y) - center_y_int) * (signed'(pos_y) - center_y_int);
-        end else if (state == BUSY_EVAL) begin
+        end else if (state == BUSY_PREPARE_1) begin
+            posx_m_centerx <= (signed'(pos_x) - center_x_int);
+            posy_m_centery <= (signed'(pos_y) - center_y_int);
+        end else if (state == BUSY_PREPARE_2 || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
+            dist_x_squared <= posx_m_centerx * posx_m_centerx;
+            dist_y_squared <= posy_m_centery * posy_m_centery;
             if (pos_x < max_x) begin
                 pos_x <= pos_x + 1;
             end else begin
@@ -186,6 +192,9 @@ always_ff @(posedge clk) begin
                 pos_y <= pos_y + 1;
             end
             fbuf_addr_int <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
+        end else if (state == BUSY_EVAL) begin
+            posx_m_centerx <= (signed'(pos_x) - center_x_int);
+            posy_m_centery <= (signed'(pos_y) - center_y_int);
         end else if (state == DONE || state == ERR) begin
             min_x <= 0;
             min_y <= 0;
@@ -193,6 +202,8 @@ always_ff @(posedge clk) begin
             max_y <= 0;
             pos_x <= 0;
             pos_y <= 0;
+            posx_m_centerx <= 0;
+            posy_m_centery <= 0;
             dist_x_squared <= 0;
             dist_y_squared <= 0;
             radius_squared <= 0;

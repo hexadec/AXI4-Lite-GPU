@@ -120,7 +120,7 @@ set_property -dict [list \
   CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {400} \
   CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
   CONFIG.PCW_EN_CLK1_PORT {1} \
-  CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {140} \
+  CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {150} \
   CONFIG.PCW_USE_M_AXI_GP0 {1} \
   CONFIG.PCW_ENET0_PERIPHERAL_ENABLE {0} \
   CONFIG.PCW_QSPI_GRP_SINGLE_SS_ENABLE {0} \
@@ -329,6 +329,11 @@ make_wrapper -files [get_files "${project_folder}/block_design/design_1/design_1
 add_files -norecurse "${project_folder}/block_design/design_1/hdl/design_1_wrapper.v"
 set_property top design_1_wrapper [current_fileset]
 update_compile_order -fileset sources_1
+
+set_property top tb_axi4_lite_gpu [get_filesets sim_1]
+set_property top_lib xil_defaultlib [get_filesets sim_1]
+update_compile_order -fileset sources_1
+update_compile_order -fileset sim_1
 
 create_run synthesis1 -flow {Vivado Synthesis 2025}
 set_property AUTO_INCREMENTAL_CHECKPOINT 1 [get_runs synthesis1]
