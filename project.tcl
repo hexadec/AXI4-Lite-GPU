@@ -88,6 +88,7 @@ add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_t
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_cir.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_line.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_framebuffer.sv"
+add_files -fileset sim_1 "${project_folder}/testbench/tb_test_pattern_generator.sv"
 update_compile_order -fileset sim_1
 
 set_property ip_repo_paths "${project_folder}/vivado-library" [current_project]

@@ -55,11 +55,12 @@ module test_pattern_generator #(
         end else begin
             pixel_fbuf_address <= address_counter;
             pixel_fbuf_wr_en <= 1;
-            if (pixel_x_counter[4:0] == 5'b10000 || pixel_y_counter[4:0] == 5'b10000) begin
-                pixel_fbuf_color <= 8'b11100000;
-            end else begin
-                pixel_fbuf_color <= 8'b00000011;
-            end
+            case ({pixel_x_counter[3], pixel_y_counter[3]})
+                2'b00: pixel_fbuf_color <= 8'b11100000;
+                2'b01: pixel_fbuf_color <= 8'b00011100;
+                2'b10: pixel_fbuf_color <= 8'b00000011;
+                2'b10: pixel_fbuf_color <= 8'b11111111;
+            endcase
         end
     end
 
