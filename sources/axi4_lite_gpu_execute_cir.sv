@@ -26,7 +26,7 @@ module axi4_lite_gpu_execute_cir #(
     output [FBUF_DATA_WIDTH - 1 : 0] fbuf_data
 );
 
-enum logic [3:0] {IDLE, BUSY_PREPARE_1, BUSY_PREPARE_2, BUSY_EVAL, BUSY_CALC_WR_INCR, BUSY_CALC_INCR, DONE, ERR} state, next_state;
+enum logic [3:0] {IDLE, BUSY_PREPARE_1, BUSY_PREPARE_2, BUSY_WR_INCR_1, BUSY_INCR_1, BUSY_WR_INCR_2, BUSY_INCR_2, DONE, ERR} state, next_state;
 
 reg center_valid_int;
 reg radius_valid_int;
@@ -36,16 +36,17 @@ reg signed [13:0] center_x_int, center_y_int;
 reg signed [13:0] radius_int;
 reg [COLOR_WIDTH - 1:0] color_int;
 
-reg [11:0] pos_x, pos_y;
+reg [11:0] pos_x, pos_y, pos_x2, pos_y2;
 reg [11:0] max_x, max_y;
 reg [11:0] min_x, min_y;
 
 reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
 
 reg signed [24:0] dist_x_squared, dist_y_squared, posx_m_centerx, posy_m_centery;
+reg signed [24:0] dist_x2_squared, dist_y2_squared, posx2_m_centerx, posy2_m_centery;
 reg signed [24:0] radius_squared;
 
-assign busy = state == BUSY_PREPARE_1 || state == BUSY_PREPARE_2 || state == BUSY_EVAL || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR;
+assign busy = state == BUSY_PREPARE_1 || state == BUSY_PREPARE_2 || state == BUSY_WR_INCR_1 || state == BUSY_INCR_1 || state == BUSY_WR_INCR_2 || state == BUSY_INCR_2;
 assign done = state == DONE;
 assign err = state == ERR;
 
@@ -76,19 +77,23 @@ always_comb begin
     end else if (state == BUSY_PREPARE_1) begin
         next_state = BUSY_PREPARE_2;
     end else if (state == BUSY_PREPARE_2) begin
-        next_state = BUSY_EVAL;
-    end else if (state == BUSY_EVAL) begin
-        if (dist_x_squared + dist_y_squared <= radius_squared) begin
-            next_state = BUSY_CALC_WR_INCR;
-        end else begin
-            next_state = BUSY_CALC_INCR;
-        end
-    end else if (state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
-        if (pos_y > max_y) begin
+        next_state = BUSY_INCR_2;
+    end else if (state == BUSY_WR_INCR_2 || state == BUSY_INCR_2) begin
+        if (pos_y >= pos_y2 && pos_x >= pos_x2) begin
             next_state = DONE;
         end else begin
-            next_state = BUSY_EVAL;
+            if (dist_x_squared + dist_y_squared <= radius_squared) begin
+                next_state = BUSY_WR_INCR_1;
+            end else begin
+                next_state = BUSY_INCR_1;
+            end
         end
+    end else if (state == BUSY_WR_INCR_1 || state == BUSY_INCR_1) begin
+            if (dist_x2_squared + dist_y2_squared <= radius_squared) begin
+                next_state = BUSY_WR_INCR_2;
+            end else begin
+                next_state = BUSY_INCR_2;
+            end
     end else if (state == DONE) begin
         next_state = IDLE;
     end else if (state == ERR) begin
@@ -160,10 +165,16 @@ always_ff @(posedge clk) begin
         max_y <= 0;
         pos_x <= 0;
         pos_y <= 0;
+        pos_x2 <= 0;
+        pos_y2 <= 0;
         posx_m_centerx <= 0;
         posy_m_centery <= 0;
+        posx2_m_centerx <= 0;
+        posy2_m_centery <= 0;
         dist_x_squared <= 0;
         dist_y_squared <= 0;
+        dist_x2_squared <= 0;
+        dist_y2_squared <= 0;
         radius_squared <= 0;
         fbuf_addr_int <= 0;
     end else begin
@@ -177,12 +188,15 @@ always_ff @(posedge clk) begin
                 pos_x <= max(0, min(center_x_int - radius_int, FRAME_WIDTH_SCALED - 1)); // == min_x
                 pos_y <= max(0, min(center_y_int - radius_int, FRAME_HEIGHT_SCALED - 1)); // == min_y
 
+                pos_x2 <= min(FRAME_WIDTH_SCALED - 1, max(0, center_x_int + radius_int)); // == max_x
+                pos_y2 <= min(FRAME_HEIGHT_SCALED - 1, max(0, center_x_int + radius_int)); // == max_y
+
                 radius_squared <= radius_int * radius_int;
             end
         end else if (state == BUSY_PREPARE_1) begin
             posx_m_centerx <= (signed'(pos_x) - center_x_int);
             posy_m_centery <= (signed'(pos_y) - center_y_int);
-        end else if (state == BUSY_PREPARE_2 || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
+        end else if (state == BUSY_PREPARE_2 || state == BUSY_WR_INCR_1 || state == BUSY_INCR_1) begin
             dist_x_squared <= posx_m_centerx * posx_m_centerx;
             dist_y_squared <= posy_m_centery * posy_m_centery;
             if (pos_x < max_x) begin
@@ -192,9 +206,23 @@ always_ff @(posedge clk) begin
                 pos_y <= pos_y + 1;
             end
             fbuf_addr_int <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
-        end else if (state == BUSY_EVAL) begin
+
+            posx2_m_centerx <= (signed'(pos_x2) - center_x_int);
+            posy2_m_centery <= (signed'(pos_y2) - center_y_int);
+        end else if (state == BUSY_WR_INCR_2 || state == BUSY_INCR_2) begin
             posx_m_centerx <= (signed'(pos_x) - center_x_int);
             posy_m_centery <= (signed'(pos_y) - center_y_int);
+
+            dist_x2_squared <= posx2_m_centerx * posx2_m_centerx;
+            dist_y2_squared <= posy2_m_centery * posy2_m_centery;
+
+            if (pos_x2 > min_x) begin
+                pos_x2 <= pos_x2 - 1;
+            end else begin
+                pos_x2 <= max_x;
+                pos_y2 <= pos_y2 - 1;
+            end
+            fbuf_addr_int <= pos_y2 * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x2;
         end else if (state == DONE || state == ERR) begin
             min_x <= 0;
             min_y <= 0;
@@ -202,6 +230,8 @@ always_ff @(posedge clk) begin
             max_y <= 0;
             pos_x <= 0;
             pos_y <= 0;
+            pos_x2 <= 0;
+            pos_y2 <= 0;
             posx_m_centerx <= 0;
             posy_m_centery <= 0;
             dist_x_squared <= 0;
@@ -213,9 +243,9 @@ always_ff @(posedge clk) begin
 end
 
 
-assign fbuf_en_wr = state == BUSY_CALC_WR_INCR;
-assign fbuf_wrea = state == BUSY_CALC_WR_INCR;
-assign fbuf_addr = state == BUSY_CALC_WR_INCR ? fbuf_addr_int : 0;
-assign fbuf_data = state == BUSY_CALC_WR_INCR ? color_int : 0;
+assign fbuf_en_wr = state == BUSY_WR_INCR_1 || state == BUSY_WR_INCR_2;
+assign fbuf_wrea = state == BUSY_WR_INCR_1 || state == BUSY_WR_INCR_2;
+assign fbuf_addr = state == BUSY_WR_INCR_1 || state == BUSY_WR_INCR_2 ? fbuf_addr_int : 0;
+assign fbuf_data = state == BUSY_WR_INCR_1 || state == BUSY_WR_INCR_2 ? color_int : 0;
 
 endmodule
