@@ -19,7 +19,7 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-// Use 2x-4x upscaling (for bigger resolutions) from framebuffer to limit BRAM use
+// Use 2x-8x upscaling (for bigger resolutions) from framebuffer to limit BRAM use
 module fbuf2rgb
 #(
     parameter FRAME_HEIGHT = 480,

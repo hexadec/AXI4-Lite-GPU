@@ -1,36 +1,42 @@
 set output_resolution "1920x1080"
 
 if {$output_resolution == "640x480"} {
+  # 60 Hz
   set param_fbuf_addr_width 19;
   set param_fbuf_data_width 8;
   set param_frame_scaling_factor 1;
   set param_frame_width 640;
   set param_frame_height 480;
 } elseif {$output_resolution == "800x600"} {
+  # 60 Hz
   set param_fbuf_addr_width 17;
   set param_fbuf_data_width 8;
   set param_frame_scaling_factor 2;
   set param_frame_width 800;
   set param_frame_height 600;
 } elseif {$output_resolution == "1280x720"} {
+  # 60 Hz
   set param_fbuf_addr_width 18;
   set param_fbuf_data_width 8;
   set param_frame_scaling_factor 2;
   set param_frame_width 1280;
   set param_frame_height 720;
 } elseif {$output_resolution == "1920x1080"} {
+  # 60 Hz
   set param_fbuf_addr_width 17;
   set param_fbuf_data_width 8;
   set param_frame_scaling_factor 4;
   set param_frame_width 1920;
   set param_frame_height 1080;
 } elseif {$output_resolution == "2560x1440"} {
+  # 30 Hz
   set param_fbuf_addr_width 18;
   set param_fbuf_data_width 8;
   set param_frame_scaling_factor 4;
   set param_frame_width 2560;
   set param_frame_height 1440;
 } elseif {$output_resolution == "3840x2160"} {
+  # 24 Hz
   set param_fbuf_addr_width 17;
   set param_fbuf_data_width 8;
   set param_frame_scaling_factor 8;
@@ -131,18 +137,27 @@ set_property -dict [list \
 ] [get_bd_cells processing_system7_0]
 
 if {$output_resolution == "640x480"} {
+  puts "Create SerialClk with Clocking Wizard in case of 640x480p"
+  puts "Use a lower GPU clock of 120 MHz due to a large framebuffer"
   set_property -dict [list \
+    CONFIG.NUM_OUT_CLKS {2} \
+    CONFIG.CLKOUT1_USED {true} \
+    CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {25.175} \
-    CONFIG.MMCM_CLKFBOUT_MULT_F {8.000} \
-    CONFIG.MMCM_CLKOUT1_DIVIDE_F {31.750} \
-    CONFIG.MMCM_DIVCLK_DIVIDE {1} \
+    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {125.875} \
+    CONFIG.MMCM_CLKFBOUT_MULT_F {17.625} \
+    CONFIG.MMCM_CLKOUT1_DIVIDE_F {35.000} \
+    CONFIG.MMCM_CLKOUT2_DIVIDE_F {7.000} \
+    CONFIG.MMCM_DIVCLK_DIVIDE {2} \
     CONFIG.RESET_PORT {resetn} \
     CONFIG.RESET_TYPE {ACTIVE_LOW} \
   ] [get_bd_cells clk_wiz_0]
   set_property -dict [list \
-    CONFIG.kClkPrimitive {MMCM} \
-    CONFIG.kClkRange {3} \
+    CONFIG.kGenerateSerialClk {false} \
   ] [get_bd_cells rgb2dvi_0]
+  set_property -dict [list \
+  CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {120}
+] [get_bd_cells processing_system7_0]
 } elseif {$output_resolution == "800x600"} {
   set_property -dict [list \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {40} \
@@ -279,6 +294,9 @@ connect_bd_net [get_bd_ports sw0] [get_bd_pins mux_sel_debounce_0/btn_in]
 apply_board_connection -board_interface "hdmi_out" -ip_intf "rgb2dvi_0/TMDS" -diagram "design_1"
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins block_0/clk]
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins rgb2dvi_0/PixelClk]
+if {$output_resolution == "640x480"} {
+  connect_bd_net [get_bd_pins clk_wiz_0/clk_out2] [get_bd_pins rgb2dvi_0/SerialClk]
+}
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins framebuffer_0/clk_rd]
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fbuf2rgb_0/clk]
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins color_converter_0/clk]

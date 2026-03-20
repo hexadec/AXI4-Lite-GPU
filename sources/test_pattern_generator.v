@@ -55,11 +55,15 @@ module test_pattern_generator #(
         end else begin
             pixel_fbuf_address <= address_counter;
             pixel_fbuf_wr_en <= 1;
-            case ({pixel_x_counter[3], pixel_y_counter[3]})
-                2'b00: pixel_fbuf_color <= 8'b11100000;
-                2'b01: pixel_fbuf_color <= 8'b00011100;
-                2'b10: pixel_fbuf_color <= 8'b00000011;
-                2'b10: pixel_fbuf_color <= 8'b11111111;
+            case ({pixel_x_counter[4:3], pixel_y_counter[3]})
+                2'b000: pixel_fbuf_color <= 8'b11100000;
+                2'b001: pixel_fbuf_color <= 8'b11111100;
+                2'b010: pixel_fbuf_color <= 8'b00011100;
+                2'b011: pixel_fbuf_color <= 8'b00011111;
+                2'b100: pixel_fbuf_color <= 8'b00000011;
+                2'b101: pixel_fbuf_color <= 8'b11100011;
+                2'b110: pixel_fbuf_color <= 8'b11111111;
+                2'b111: pixel_fbuf_color <= 8'b00000000;
             endcase
         end
     end
