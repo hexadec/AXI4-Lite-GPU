@@ -30,7 +30,19 @@ module axi4_lite_gpu_execute_tri #(
     output [FBUF_DATA_WIDTH - 1 : 0] fbuf_data
 );
 
-enum logic [3:0] {IDLE, BUSY_PREPARE_1, BUSY_PREPARE_2, BUSY_PREPARE_3, BUSY_EVAL, BUSY_CALC_WR_INCR, BUSY_CALC_INCR, DONE, ERR} state, next_state;
+enum logic [5:0] {  IDLE = 6'b000000, 
+                    BUSY_PREPARE_1 = 6'b100001, 
+                    BUSY_PREPARE_2 = 6'b100010,
+                    BUSY_PREPARE_3 = 6'b100011,
+                    BUSY_PREPARE_4 = 6'b100100,
+                    BUSY_PREPARE_5 = 6'b100101,
+                    BUSY_CALC_INCR = 6'b100110,
+                    BUSY_CALC_WR_INCR = 6'b110111,
+                    BUSY_LAST_WR_1 = 6'b111000,
+                    BUSY_LAST_NOWR_1 = 6'b101001,
+                    BUSY_LAST_WR_2 = 6'b111010, 
+                    DONE = 6'b001011, 
+                    ERR = 6'b001100} state, next_state;
 
 reg xy0_valid_int;
 reg xy1_valid_int;
@@ -55,9 +67,9 @@ reg signed [12:0] y2my1, x2mx1, y0my2, x0mx2, y1my0, x1mx0;
 
 reg [2:0] signs;
 
-reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
+reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int [2:0];
 
-assign busy = state == BUSY_PREPARE_1 || state == BUSY_PREPARE_2  || state == BUSY_PREPARE_3 || state == BUSY_EVAL || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR;
+assign busy = state[5];
 assign done = state == DONE;
 assign err = state == ERR;
 
@@ -91,19 +103,31 @@ always_comb begin
     end else if (state == BUSY_PREPARE_2) begin
         next_state = BUSY_PREPARE_3;
     end else if (state == BUSY_PREPARE_3) begin
-        next_state = BUSY_EVAL;
-    end else if (state == BUSY_EVAL) begin
+        next_state = BUSY_PREPARE_4;
+    end else if (state == BUSY_PREPARE_4) begin
+        next_state = BUSY_PREPARE_5;
+    end else if (state == BUSY_PREPARE_5 || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
         if ((a[23] == signs[0] || a == 0) && (b[23] == signs[1] || b == 0) && (c[23] == signs[2] || c == 0)) begin
-            next_state = BUSY_CALC_WR_INCR;
+            if (pos_y > max_y) begin
+                next_state = BUSY_LAST_WR_1;
+            end else begin
+                next_state = BUSY_CALC_WR_INCR;
+            end
         end else begin
-            next_state = BUSY_CALC_INCR;
+            if (pos_y > max_y) begin
+                next_state = BUSY_LAST_NOWR_1;
+            end else begin
+                next_state = BUSY_CALC_INCR;
+            end
         end
-    end else if (state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
-        if (pos_y > max_y) begin
+    end else if (state == BUSY_LAST_WR_1 || state == BUSY_LAST_NOWR_1) begin
+        if ((a[23] == signs[0] || a == 0) && (b[23] == signs[1] || b == 0) && (c[23] == signs[2] || c == 0)) begin
+            next_state = BUSY_LAST_WR_2;
+        end else begin
             next_state = DONE;
-        end else begin
-            next_state = BUSY_EVAL;
         end
+    end else if (state == BUSY_LAST_WR_2) begin
+        next_state = DONE;
     end else if (state == DONE) begin
         next_state = IDLE;
     end else if (state == ERR) begin
@@ -222,7 +246,9 @@ always_ff @(posedge clk) begin
         y1my0_posx <= 0;
         x1mx0_posy <= 0;
 
-        fbuf_addr_int <= 0;
+        fbuf_addr_int[0] <= 0;
+        fbuf_addr_int[1] <= 0;
+        fbuf_addr_int[2] <= 0;
     end else begin
         if (state == IDLE) begin
             if (start && xy0_valid_int && xy1_valid_int && xy2_valid_int) begin
@@ -271,13 +297,12 @@ always_ff @(posedge clk) begin
             y2my1_x0 <= y2my1_x0 - x2mx1_y0 + xy21;
             y0my2_x1 <= y0my2_x1 - x0mx2_y1 + xy02;
             y1my0_x2 <= y1my0_x2 - x1mx0_y2 + xy10;
-        end else if (state == BUSY_PREPARE_3 || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
+        end else if (state == BUSY_PREPARE_3 || state == BUSY_PREPARE_4 || state == BUSY_PREPARE_5 || state == BUSY_CALC_WR_INCR || state == BUSY_CALC_INCR) begin
             if (state == BUSY_PREPARE_3) begin
                 signs[0] <= y2my1_x0 < 8'sd0;
                 signs[1] <= y0my2_x1 < 8'sd0;
                 signs[2] <= y1my0_x2 < 8'sd0;
             end
-            
             a <= y2my1_posx - x2mx1_posy + xy21;
             b <= y0my2_posx - x0mx2_posy + xy02;
             c <= y1my0_posx - x1mx0_posy + xy10;
@@ -288,14 +313,18 @@ always_ff @(posedge clk) begin
                 pos_x <= min_x;
                 pos_y <= pos_y + 1;
             end
-            fbuf_addr_int <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
-        end else if (state == BUSY_EVAL) begin
+            fbuf_addr_int[0] <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
+            fbuf_addr_int[1] <= fbuf_addr_int[0];
+            fbuf_addr_int[2] <= fbuf_addr_int[1];
+
             y2my1_posx <= y2my1 * signed'(pos_x);
             x2mx1_posy <= x2mx1 * signed'(pos_y);
             y0my2_posx <= y0my2 * signed'(pos_x);
             x0mx2_posy <= x0mx2 * signed'(pos_y);
             y1my0_posx <= y1my0 * signed'(pos_x);
             x1mx0_posy <= x1mx0 * signed'(pos_y);
+        end else if (state == BUSY_LAST_WR_1 || state == BUSY_LAST_NOWR_1) begin
+            fbuf_addr_int[2] <= fbuf_addr_int[1];
         end else if (state == DONE || state == ERR) begin
             min_x <= 0;
             min_y <= 0;
@@ -337,15 +366,17 @@ always_ff @(posedge clk) begin
             y1my0_posx <= 0;
             x1mx0_posy <= 0;
 
-            fbuf_addr_int <= 0;
+            fbuf_addr_int[0] <= 0;
+            fbuf_addr_int[1] <= 0;
+            fbuf_addr_int[2] <= 0;
         end
     end
 end
 
 
-assign fbuf_en_wr = state == BUSY_CALC_WR_INCR;
-assign fbuf_wrea = state == BUSY_CALC_WR_INCR;
-assign fbuf_addr = state == BUSY_CALC_WR_INCR ? fbuf_addr_int : 0;
-assign fbuf_data = state == BUSY_CALC_WR_INCR ? color_int : 0;
+assign fbuf_en_wr = state[5:4] == 2'b11;
+assign fbuf_wrea = state[5:4] == 2'b11;
+assign fbuf_addr = state[5:4] == 2'b11 ? fbuf_addr_int[2] : 0;
+assign fbuf_data = state[5:4] == 2'b11 ? color_int : 0;
 
 endmodule

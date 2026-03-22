@@ -1,13 +1,15 @@
 module tb_axi4_lite_gpu_execute_tri;
 
-localparam FRAME_WIDTH_SCALED = 640;
-localparam FRAME_HEIGHT_SCALED = 480;
+localparam FRAME_WIDTH_SCALED = 100;
+localparam FRAME_HEIGHT_SCALED = 100;
 localparam COLOR_WIDTH = 8;
 localparam FBUF_ADDR_WIDTH = 19;
 localparam FBUF_DATA_WIDTH = 8;
 
 logic clk = 0;
 logic rst_n = 0;
+
+int output_counter = 0;
 
 logic start = 0;
 logic busy;
@@ -71,12 +73,12 @@ initial begin
     #10
     rst_n = 1;
     x0 = 1;
-    y0 = 1;
+    y0 = 5;
     xy0_valid = 1;
     x1 = 5;
     y1 = 1;
     xy1_valid = 1;
-    x2 = 3;
+    x2 = 5;
     y2 = 5;
     xy2_valid = 1;
     color_valid = 1;
@@ -89,7 +91,22 @@ initial begin
     start = 1;
     #10
     start = 0;
-    #1500
+    output_counter = 0;
+    while (!done) begin
+        #10
+        if (fbuf_en_wr && fbuf_wrea) begin
+            output_counter = output_counter + 1;
+            assert(fbuf_data == color);
+            assert( fbuf_addr == 105 || 
+                    fbuf_addr == 205 || fbuf_addr == 204 ||
+                    fbuf_addr == 305 || fbuf_addr == 304 || fbuf_addr == 303 ||
+                    fbuf_addr == 405 || fbuf_addr == 404 || fbuf_addr == 403 || fbuf_addr == 402 ||
+                    fbuf_addr == 505 || fbuf_addr == 504 || fbuf_addr == 503 || fbuf_addr == 502 || fbuf_addr == 501);
+        end
+    end
+    #10
+    assert(output_counter == 15) else $error("Invalid number of fbuf writes! Expected %d, got %d", 15, output_counter);
+    #10
     $finish;
 end
 

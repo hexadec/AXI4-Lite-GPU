@@ -1,7 +1,7 @@
 module tb_axi4_lite_gpu_execute_cir;
 
-localparam FRAME_WIDTH_SCALED = 640;
-localparam FRAME_HEIGHT_SCALED = 480;
+localparam FRAME_WIDTH_SCALED = 100;
+localparam FRAME_HEIGHT_SCALED = 100;
 localparam COLOR_WIDTH = 8;
 localparam FBUF_ADDR_WIDTH = 19;
 localparam FBUF_DATA_WIDTH = 8;
