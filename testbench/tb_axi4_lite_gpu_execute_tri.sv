@@ -9,8 +9,6 @@ localparam FBUF_DATA_WIDTH = 8;
 logic clk = 0;
 logic rst_n = 0;
 
-int output_counter = 0;
-
 logic start = 0;
 logic busy;
 logic done;
@@ -68,21 +66,37 @@ axi4_lite_gpu_execute_tri #(
 
 always #5 clk = ~clk;
 
-initial begin
-    rst_n = 0;
-    #10
+int coordinates_x0[2] = '{1, 1};
+int coordinates_y0[2] = '{5, 1};
+int coordinates_x1[2] = '{5, 1};
+int coordinates_y1[2] = '{1, 5};
+int coordinates_x2[2] = '{5, 5};
+int coordinates_y2[2] = '{5, 5};
+int colors[2] = '{8'hff, 8'hf1};
+
+
+int allowed_coordinates_0[15] = {105, 205, 204, 305, 304, 303, 405, 404, 403, 402, 505, 504, 503, 502, 501};
+int allowed_coordinates_1[15] = {101, 201, 202, 301, 302, 303, 401, 402, 403, 404, 501, 502, 503, 504, 505};
+
+int write_count[2] = {15, 15};
+
+task write_triangle(input index);
+    int output_counter = 0;
+    logic found = 0;
+    int index_counter = 0;
+    $display("Running test #%d", index);
     rst_n = 1;
-    x0 = 1;
-    y0 = 5;
+    x0 = coordinates_x0[index];
+    y0 = coordinates_y0[index];
     xy0_valid = 1;
-    x1 = 5;
-    y1 = 1;
+    x1 = coordinates_x1[index];
+    y1 = coordinates_y1[index];
     xy1_valid = 1;
-    x2 = 5;
-    y2 = 5;
+    x2 = coordinates_x2[index];
+    y2 = coordinates_y2[index];
     xy2_valid = 1;
+    color = colors[index];
     color_valid = 1;
-    color = 8'hff;
     #20
     xy0_valid = 0;
     xy1_valid = 0;
@@ -92,20 +106,45 @@ initial begin
     #10
     start = 0;
     output_counter = 0;
+    index_counter = 0;
     while (!done) begin
         #10
         if (fbuf_en_wr && fbuf_wrea) begin
             output_counter = output_counter + 1;
-            assert(fbuf_data == color);
-            assert( fbuf_addr == 105 || 
-                    fbuf_addr == 205 || fbuf_addr == 204 ||
-                    fbuf_addr == 305 || fbuf_addr == 304 || fbuf_addr == 303 ||
-                    fbuf_addr == 405 || fbuf_addr == 404 || fbuf_addr == 403 || fbuf_addr == 402 ||
-                    fbuf_addr == 505 || fbuf_addr == 504 || fbuf_addr == 503 || fbuf_addr == 502 || fbuf_addr == 501);
+            found = 0;
+            assert(fbuf_data == colors[index]);
+            for (int addr_i = 0; addr_i < write_count[index]; addr_i += 1) begin
+                case (index) 
+                    0: begin
+                        if (fbuf_addr == allowed_coordinates_0[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                    1: begin
+                        if (fbuf_addr == allowed_coordinates_1[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                endcase
+            end
+            assert(found) else $error("fbuf_addr (%d) not found in list of allowed values", fbuf_addr);
         end
     end
     #10
-    assert(output_counter == 15) else $error("Invalid number of fbuf writes! Expected %d, got %d", 15, output_counter);
+    assert(output_counter == write_count[index]) else $error("Invalid number of fbuf writes! Expected %d, got %d", write_count[index], output_counter);
+    assert(index_counter == (write_count[index] + 1) * write_count[index] / 2) else $error("Checksum of fbuf_addr mismatch! Expected %d, got %d", index_counter, (write_count[index] + 1) * write_count[index] / 2);
+endtask;
+
+initial begin
+    rst_n = 0;
+    #10
+    rst_n = 1;
+    #10
+    write_triangle(0);
+    #10
+    write_triangle(1);
     #10
     $finish;
 end
