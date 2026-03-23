@@ -66,21 +66,24 @@ axi4_lite_gpu_execute_tri #(
 
 always #5 clk = ~clk;
 
-int coordinates_x0[2] = '{1, 1};
-int coordinates_y0[2] = '{5, 1};
-int coordinates_x1[2] = '{5, 1};
-int coordinates_y1[2] = '{1, 5};
-int coordinates_x2[2] = '{5, 5};
-int coordinates_y2[2] = '{5, 5};
-int colors[2] = '{8'hff, 8'hf1};
+int coordinates_x0[5] = '{1, 1, 1, 0, 98};
+int coordinates_y0[5] = '{5, 1, 1, 0, 99};
+int coordinates_x1[5] = '{5, 1, 1, 1, 99};
+int coordinates_y1[5] = '{1, 5, 5, 0, 98};
+int coordinates_x2[5] = '{5, 5, 5, 0, 99};
+int coordinates_y2[5] = '{5, 5, 1, 1, 99};
+int colors[5] = '{8'hff, 8'hf1, 8'h1f, 8'hff, 8'hf1};
 
 
 int allowed_coordinates_0[15] = {105, 205, 204, 305, 304, 303, 405, 404, 403, 402, 505, 504, 503, 502, 501};
 int allowed_coordinates_1[15] = {101, 201, 202, 301, 302, 303, 401, 402, 403, 404, 501, 502, 503, 504, 505};
+int allowed_coordinates_2[15] = {101, 102, 103, 104, 105, 201, 202, 203, 204, 301, 302, 303, 401, 402, 501};
+int allowed_coordinates_3[3] = {0, 1, 100};
+int allowed_coordinates_4[3] = {9899, 9998, 9999};
 
-int write_count[2] = {15, 15};
+int write_count[5] = {15, 15, 15, 3, 3};
 
-task write_triangle(input index);
+task write_triangle(input int index);
     int output_counter = 0;
     logic found = 0;
     int index_counter = 0;
@@ -127,6 +130,24 @@ task write_triangle(input index);
                             index_counter += addr_i + 1;
                         end
                     end
+                    2: begin
+                        if (fbuf_addr == allowed_coordinates_2[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                    3: begin
+                        if (fbuf_addr == allowed_coordinates_3[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                    4: begin
+                        if (fbuf_addr == allowed_coordinates_4[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
                 endcase
             end
             assert(found) else $error("fbuf_addr (%d) not found in list of allowed values", fbuf_addr);
@@ -145,6 +166,12 @@ initial begin
     write_triangle(0);
     #10
     write_triangle(1);
+    #10
+    write_triangle(2);
+    #10
+    write_triangle(3);
+    #10
+    write_triangle(4);
     #10
     $finish;
 end
