@@ -30,13 +30,14 @@ enum logic [5:0] {  IDLE = 0,
                     BUSY_PREPARE_1 = 6'b100001, 
                     BUSY_PREPARE_2 = 6'b100010,
                     BUSY_PREPARE_3 = 6'b100011, 
-                    BUSY_WR_INCR_1 = 6'b110100, 
-                    BUSY_INCR_1 = 6'b100101, 
-                    BUSY_WR_INCR_2 = 6'b110110, 
-                    BUSY_INCR_2 = 6'b100111, 
-                    BUSY_LASTWRITE = 6'b111000, 
-                    DONE = 6'b001001, 
-                    ERR = 6'b001010} state, next_state;
+                    BUSY_PREPARE_4 = 6'b100100, 
+                    BUSY_WR_INCR = 6'b110110, 
+                    BUSY_INCR = 6'b100111, 
+                    BUSY_LAST_WR_1 = 6'b111000,
+                    BUSY_LAST_NOWR_1 = 6'b101001,
+                    BUSY_LAST_WR_2 = 6'b111010, 
+                    DONE = 6'b001011, 
+                    ERR = 6'b001100} state, next_state;
 
 reg center_valid_int;
 reg radius_valid_int;
@@ -87,35 +88,29 @@ always_comb begin
         next_state = BUSY_PREPARE_2;
     end else if (state == BUSY_PREPARE_2) begin
         next_state = BUSY_PREPARE_3;
-    end else if (state == BUSY_PREPARE_3 || state == BUSY_WR_INCR_2 || state == BUSY_INCR_2) begin
+    end else if (state == BUSY_PREPARE_3) begin
+        next_state = BUSY_PREPARE_4;
+    end else if (state == BUSY_PREPARE_4 || state == BUSY_WR_INCR || state == BUSY_INCR) begin
         if (dist_x_squared + dist_y_squared <= radius_squared) begin
             if (pos_y >= max_y && pos_x >= max_x) begin
-                next_state = BUSY_LASTWRITE;
+                next_state = BUSY_LAST_WR_1;
             end else begin
-                next_state = BUSY_WR_INCR_1;
+                next_state = BUSY_WR_INCR;
             end
         end else begin
             if (pos_y >= max_y && pos_x >= max_x) begin
-                next_state = DONE;
+                next_state = BUSY_LAST_NOWR_1;
             end else begin
-                next_state = BUSY_INCR_1;
+                next_state = BUSY_INCR;
             end
         end
-    end else if (state == BUSY_WR_INCR_1 || state == BUSY_INCR_1) begin
+    end else if (state == BUSY_LAST_WR_1 || state == BUSY_LAST_NOWR_1) begin
         if (dist_x_squared + dist_y_squared <= radius_squared) begin
-            if (pos_y >= max_y && pos_x >= max_x) begin
-                next_state = BUSY_LASTWRITE;
-            end else begin
-                next_state = BUSY_WR_INCR_2;
-            end
+            next_state = BUSY_LAST_WR_2;
         end else begin
-            if (pos_y >= max_y && pos_x >= max_x) begin
-                next_state = DONE;
-            end else begin
-                next_state = BUSY_INCR_2;
-            end
-        end
-    end else if (state == BUSY_LASTWRITE) begin
+            next_state = DONE;
+        end 
+    end else if (state == BUSY_LAST_WR_2) begin
         next_state = DONE;
     end else if (state == DONE) begin
         next_state = IDLE;
@@ -212,7 +207,7 @@ always_ff @(posedge clk) begin
         end else if (state == BUSY_PREPARE_1) begin
             posx_m_centerx <= (signed'(pos_x) - center_x_int);
             posy_m_centery <= (signed'(pos_y) - center_y_int);
-        end else if (state == BUSY_PREPARE_2 || state == BUSY_WR_INCR_1 || state == BUSY_INCR_1) begin
+        end else if (state == BUSY_PREPARE_2 || state == BUSY_PREPARE_3 || state == BUSY_PREPARE_4 || state == BUSY_WR_INCR || state == BUSY_INCR) begin
             dist_x_squared <= posx_m_centerx * posx_m_centerx;
             dist_y_squared <= posy_m_centery * posy_m_centery;
             if (pos_x < max_x) begin
@@ -227,20 +222,7 @@ always_ff @(posedge clk) begin
 
             posx_m_centerx <= (signed'(pos_x) - center_x_int);
             posy_m_centery <= (signed'(pos_y) - center_y_int);
-        end else if (state == BUSY_WR_INCR_2 || state == BUSY_INCR_2) begin
-            posx_m_centerx <= (signed'(pos_x) - center_x_int);
-            posy_m_centery <= (signed'(pos_y) - center_y_int);
-
-            dist_x_squared <= posx_m_centerx * posx_m_centerx;
-            dist_y_squared <= posy_m_centery * posy_m_centery;
-            if (pos_x < max_x) begin
-                pos_x <= pos_x + 1;
-            end else begin
-                pos_x <= min_x;
-                pos_y <= pos_y + 1;
-            end
-            fbuf_addr_int[0] <= pos_y * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + pos_x;
-            fbuf_addr_int[1] <= fbuf_addr_int[0];
+        end else if (state == BUSY_LAST_WR_1 || state == BUSY_LAST_NOWR_1) begin
             fbuf_addr_int[2] <= fbuf_addr_int[1];
         end else if (state == DONE || state == ERR) begin
             min_x <= 0;

@@ -58,17 +58,31 @@ axi4_lite_gpu_execute_cir #(
 
 always #5 clk = ~clk;
 
-initial begin
-    rst_n = 0;
-    #10
+int centers_x[3] = '{1, 0, 22};
+int centers_y[3] = '{1, 0, 33};
+int radii[3] = '{1, 1, 0};
+int colors[3] = '{8'hff, 8'hf1, 8'hff};
+
+
+int allowed_coordinates_0[5] = {1, 100, 101, 102, 201};
+int allowed_coordinates_1[3] = {0, 1, 100};
+int allowed_coordinates_2[1] = {3322};
+
+int write_count[3] = {5, 3, 1};
+
+task write_circle(input int index);
+    int output_counter = 0;
+    logic found = 0;
+    int index_counter = 0;
+    $display("Running test #%d", index);
     rst_n = 1;
+    center_x = centers_x[index];
+    center_y = centers_y[index];
     center_valid = 1;
-    center_x = 10;
-    center_y = 10;
+    radius = radii[index];
     radius_valid = 1;
-    radius = 5;
+    color = colors[index];
     color_valid = 1;
-    color = 8'hff;
     #20
     center_valid = 0;
     radius_valid = 0;
@@ -76,7 +90,55 @@ initial begin
     start = 1;
     #10
     start = 0;
-    #1500
+    output_counter = 0;
+    index_counter = 0;
+    while (!done) begin
+        #10
+        if (fbuf_en_wr && fbuf_wrea) begin
+            output_counter = output_counter + 1;
+            found = 0;
+            assert(fbuf_data == colors[index]);
+            for (int addr_i = 0; addr_i < write_count[index]; addr_i += 1) begin
+                case (index) 
+                    0: begin
+                        if (fbuf_addr == allowed_coordinates_0[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                    1: begin
+                        if (fbuf_addr == allowed_coordinates_1[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                    2: begin
+                        if (fbuf_addr == allowed_coordinates_2[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
+                endcase
+            end
+            assert(found) else $error("fbuf_addr (%d) not found in list of allowed values", fbuf_addr);
+        end
+    end
+    #10
+    assert(output_counter == write_count[index]) else $error("Invalid number of fbuf writes! Expected %d, got %d", write_count[index], output_counter);
+    assert(index_counter == (write_count[index] + 1) * write_count[index] / 2) else $error("Checksum of fbuf_addr mismatch! Expected %d, got %d", index_counter, (write_count[index] + 1) * write_count[index] / 2);
+endtask;
+
+initial begin
+    rst_n = 0;
+    #10
+    rst_n = 1;
+    #10
+    write_circle(0);
+    #10
+    write_circle(1);
+    #10
+    write_circle(2);
+    #10
     $finish;
 end
 
