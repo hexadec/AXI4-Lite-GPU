@@ -58,17 +58,18 @@ axi4_lite_gpu_execute_cir #(
 
 always #5 clk = ~clk;
 
-int centers_x[3] = '{1, 0, 22};
-int centers_y[3] = '{1, 0, 33};
-int radii[3] = '{1, 1, 0};
-int colors[3] = '{8'hff, 8'hf1, 8'hff};
+int centers_x[4] = '{1, 0, 22, 10};
+int centers_y[4] = '{1, 0, 33, 10};
+int radii[4] = '{1, 1, 0, 2};
+int colors[4] = '{8'hff, 8'hf1, 8'hff, 8'hf1};
 
 
 int allowed_coordinates_0[5] = {1, 100, 101, 102, 201};
 int allowed_coordinates_1[3] = {0, 1, 100};
 int allowed_coordinates_2[1] = {3322};
+int allowed_coordinates_3[21] = {809, 810, 811, 908, 909, 910, 911, 912, 1008, 1009, 1010, 1011, 1012, 1108, 1109, 1110, 1111, 1112, 1209, 1210, 1211};
 
-int write_count[3] = {5, 3, 1};
+int write_count[4] = {5, 3, 1, 21};
 
 task write_circle(input int index);
     int output_counter = 0;
@@ -118,6 +119,12 @@ task write_circle(input int index);
                             index_counter += addr_i + 1;
                         end
                     end
+                    3: begin
+                        if (fbuf_addr == allowed_coordinates_3[addr_i]) begin
+                            found = 1;
+                            index_counter += addr_i + 1;
+                        end
+                    end
                 endcase
             end
             assert(found) else $error("fbuf_addr (%d) not found in list of allowed values", fbuf_addr);
@@ -138,6 +145,8 @@ initial begin
     write_circle(1);
     #10
     write_circle(2);
+    #10
+    write_circle(3);
     #10
     $finish;
 end

@@ -207,6 +207,11 @@ always_ff @(posedge clk) begin
         end else if (state == BUSY_PREPARE_1) begin
             posx_m_centerx <= (signed'(pos_x) - center_x_int);
             posy_m_centery <= (signed'(pos_y) - center_y_int);
+            if (radius_int < 5) begin
+                radius_squared <= radius_squared + radius_int / 2;
+            end else begin
+                radius_squared <= radius_squared + radius_int;
+            end
         end else if (state == BUSY_PREPARE_2 || state == BUSY_PREPARE_3 || state == BUSY_PREPARE_4 || state == BUSY_WR_INCR || state == BUSY_INCR) begin
             dist_x_squared <= posx_m_centerx * posx_m_centerx;
             dist_y_squared <= posy_m_centery * posy_m_centery;
