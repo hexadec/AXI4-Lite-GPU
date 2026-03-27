@@ -79,6 +79,7 @@ add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_execute_re
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_execute_tri.sv"
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_execute_cir.sv"
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_execute_line.sv"
+add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_char_rom.sv"
 update_compile_order -fileset sources_1
 file mkdir "${project_folder}/block_design"
 create_bd_design -dir "${project_folder}/block_design" design_1
@@ -93,9 +94,12 @@ add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_r
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_tri.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_cir.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_line.sv"
+add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_char_rom.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_framebuffer.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_test_pattern_generator.sv"
 update_compile_order -fileset sim_1
+
+add_files -norecurse "${project_folder}/mem/font.mem"
 
 set_property ip_repo_paths "${project_folder}/vivado-library" [current_project]
 update_ip_catalog
