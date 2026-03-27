@@ -2,7 +2,7 @@ module tb_axi4_lite_gpu_char_rom;
 
 localparam CHAR_WIDTH = 8;
 localparam CHAR_HEIGHT = 8;
-localparam CHARACTER_COUNT = 2;
+localparam CHARACTER_COUNT = 8;
 
 logic clk = 0;
 
