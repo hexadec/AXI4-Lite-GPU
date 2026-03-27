@@ -88,7 +88,7 @@ wire [AXI_DATA_WIDTH - 1:0] decoder_write_data;
 axi4_lite_gpu_ring_buffer #(
     .ADDRESS_WIDTH(16),
     .DATA_WIDTH(AXI_DATA_WIDTH),
-    .BUFFER_SIZE(32)
+    .BUFFER_SIZE(64)
 ) axi4_lite_gpu_ring_buffer_inst (
     // AXI Clock
     .clk(s_axi_ctrl_aclk),

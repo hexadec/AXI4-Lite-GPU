@@ -102,7 +102,7 @@ always_comb begin
     end else if (state == BUSY_WRITE) begin
         if (fbuf_pos_x == fbuf_max_x && fbuf_pos_y == fbuf_max_y) begin
             next_state = DONE;
-        end else if (char_pos_x == char_max_x) begin
+        end else if (char_pos_x == char_min_x) begin
             next_state = BUSY_GETROW;
         end else begin
             next_state = BUSY_WRITE;
@@ -162,6 +162,12 @@ always_ff @(posedge clk) begin
         fbuf_max_y <= 0;
         fbuf_pos_x <= 0;
         fbuf_pos_y <= 0;
+        char_min_x <= 0;
+        char_min_y <= 0;
+        char_max_x <= 0;
+        char_max_y <= 0;
+        char_pos_x <= 0;
+        char_pos_y <= 0;
         fbuf_addr_int <= 0;
     end else begin
         if (state == IDLE) begin
@@ -177,7 +183,7 @@ always_ff @(posedge clk) begin
 
                 fbuf_pos_x <= x_int; // == fbuf_min_x
                 fbuf_pos_y <= y_int; // == fbuf_min_y
-                char_pos_x <= 0;
+                char_pos_x <= CHAR_WIDTH - 1;
                 char_pos_y <= 0;
             end
         end else if (state == BUSY_GETROW) begin
@@ -190,10 +196,10 @@ always_ff @(posedge clk) begin
                     fbuf_pos_y <= fbuf_pos_y + 1;
                 end
             end
-            if (char_pos_x < char_max_x) begin
-                char_pos_x <= char_pos_x + 1;
+            if (char_pos_x > char_min_x) begin
+                char_pos_x <= char_pos_x - 1;
             end else begin
-                char_pos_x <= char_min_x;
+                char_pos_x <= char_max_x;
                 if (char_pos_y < char_max_y) begin
                     char_pos_y <= char_pos_y + 1;
                 end
@@ -206,6 +212,12 @@ always_ff @(posedge clk) begin
             fbuf_max_y <= 0;
             fbuf_pos_x <= 0;
             fbuf_pos_y <= 0;
+            char_min_x <= 0;
+            char_min_y <= 0;
+            char_max_x <= 0;
+            char_max_y <= 0;
+            char_pos_x <= 0;
+            char_pos_y <= 0;
             fbuf_addr_int <= 0;
         end
     end
