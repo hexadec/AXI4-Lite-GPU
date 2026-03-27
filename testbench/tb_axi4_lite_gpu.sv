@@ -203,6 +203,19 @@ initial begin
     #10
     $display("Writing line START");
     axi4_lite_write(.address(32'h400), .data(32'h00));
+    #10
+    $display("Starting char write test...");
+    $display("Writing char XY");
+    axi4_lite_write(.address(32'h504), .data(32'({16'd30, 16'd50})));
+    #10
+    $display("Writing char code");
+    axi4_lite_write(.address(32'h508), .data(32'd4));
+    #10
+    $display("Writing char COLOR");
+    axi4_lite_write(.address(32'h50C), .data(32'b11000011));
+    #10
+    $display("Writing char START");
+    axi4_lite_write(.address(32'h500), .data(32'h00));
     #4000
     $display("Basic read and write test finished");
     $finish;

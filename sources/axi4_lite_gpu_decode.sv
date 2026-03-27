@@ -225,11 +225,58 @@ axi4_lite_gpu_execute_line #(
     .fbuf_data(line_fbuf_data)
 );
 
+wire char_start;
+wire char_busy;
+wire char_done;
+wire char_err;
+
+wire char_xy_valid;
+wire [11:0] char_x, char_y;
+wire char_code_valid;
+wire [11:0] char_code;
+wire char_color_valid;
+wire [7:0] char_color;
+
+wire char_fbuf_en_wr;
+wire char_fbuf_wrea;
+wire [FBUF_ADDR_WIDTH - 1 : 0] char_fbuf_addr;
+wire [FBUF_DATA_WIDTH - 1 : 0] char_fbuf_data;
+
+axi4_lite_gpu_execute_char #(
+    .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
+    .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
+    .COLOR_WIDTH(8),
+    .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
+    .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
+) axi4_lite_gpu_execute_char_inst (
+    .clk(clk),
+    .rst_n(rst_n),
+
+    .start(char_start),
+    .busy(char_busy),
+    .done(char_done),
+    .err(char_err),
+
+    .xy_valid(char_xy_valid),
+    .x(char_x),
+    .y(char_y),
+    .char_code_valid(char_code_valid),
+    .char_code(char_code),
+    .color_valid(char_color_valid),
+    .color(char_color),
+
+    .fbuf_en_wr(char_fbuf_en_wr),
+    .fbuf_wrea(char_fbuf_wrea),
+    .fbuf_addr(char_fbuf_addr),
+    .fbuf_data(char_fbuf_data)
+);
+
 enum reg [4:0] {IDLE = 0, BUSY_SINGLE, BUSY_RESET, 
                 BUSY_RECT, LOAD_RECT_COORDS_LEFT, LOAD_RECT_COORDS_RIGHT, LOAD_RECT_COLOR,
                 BUSY_TRI, LOAD_TRI_COORDS_XY0, LOAD_TRI_COORDS_XY1, LOAD_TRI_COORDS_XY2, LOAD_TRI_COLOR,
                 BUSY_CIR, LOAD_CIR_COORDS_CENTER, LOAD_CIR_RADIUS, LOAD_CIR_COLOR,
-                BUSY_LINE, LOAD_LINE_COORDS_XY0, LOAD_LINE_COORDS_XY1, LOAD_LINE_COLOR} execute_unit_state, next_state;
+                BUSY_LINE, LOAD_LINE_COORDS_XY0, LOAD_LINE_COORDS_XY1, LOAD_LINE_COLOR,
+                BUSY_CHAR, LOAD_CHAR_XY, LOAD_CHAR_CODE, LOAD_CHAR_COLOR} execute_unit_state, next_state;
 
 assign write_processing_ok = !rst_n ? 0 : (execute_unit_state == IDLE && write_processing_start) ? 1 : 0;
 assign write_processing_done = !rst_n ? 0 : (execute_unit_state == IDLE && write_processing_start) ? 1 : 0;
@@ -289,6 +336,14 @@ always_comb begin
                             next_state = LOAD_LINE_COORDS_XY1;
                         32'h40C:
                             next_state = LOAD_LINE_COLOR;
+                        32'h500:
+                            next_state = BUSY_CHAR;
+                        32'h504:
+                            next_state = LOAD_CHAR_XY;
+                        32'h508:
+                            next_state = LOAD_CHAR_CODE;
+                        32'h50C:
+                            next_state = LOAD_CHAR_COLOR;
                     endcase
                 end
             end
@@ -311,6 +366,10 @@ always_comb begin
             BUSY_LINE:
                 if ((line_busy || line_start) && !line_done && !line_err) begin
                     next_state = BUSY_LINE;
+                end
+            BUSY_CHAR:
+                if ((char_busy || char_start) && !char_done && !char_err) begin
+                    next_state = BUSY_CHAR;
                 end
         endcase
     end
@@ -367,6 +426,17 @@ assign line_color = write_data_reg[7:0];
 
 assign line_start = (execute_unit_state == BUSY_LINE) && !line_busy && !line_done && !line_err;
 
+assign char_xy_valid = (execute_unit_state == LOAD_CHAR_XY);
+assign char_code_valid = (execute_unit_state == LOAD_CHAR_CODE);
+assign char_x = write_data_reg[27:16];
+assign char_y = write_data_reg[11:0];
+assign char_code = write_data_reg[11:0];
+
+assign char_color_valid = (execute_unit_state == LOAD_CHAR_COLOR);
+assign char_color = write_data_reg[7:0];
+
+assign char_start = (execute_unit_state == BUSY_CHAR) && !char_busy && !char_done && !char_err;
+
 always_comb begin
     case (execute_unit_state)
         BUSY_RESET: begin
@@ -410,6 +480,13 @@ always_comb begin
             fbuf_wrea = line_fbuf_wrea;
             fbuf_addr = line_fbuf_addr;
             fbuf_data = line_fbuf_data;
+        end
+        BUSY_CHAR: begin
+            fbuf_rst_req_n = 1;
+            fbuf_en_wr = char_fbuf_en_wr;
+            fbuf_wrea = char_fbuf_wrea;
+            fbuf_addr = char_fbuf_addr;
+            fbuf_data = char_fbuf_data;
         end
         default: begin
             fbuf_rst_req_n = 1;
