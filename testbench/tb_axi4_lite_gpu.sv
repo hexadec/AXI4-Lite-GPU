@@ -4,8 +4,8 @@ localparam AXI_ADDRESS_WIDTH = 32;
 localparam AXI_DATA_WIDTH = 32;
 localparam FBUF_ADDR_WIDTH = 19;
 localparam FBUF_DATA_WIDTH = 8;
-localparam FRAME_WIDTH_SCALED = 640;
-localparam FRAME_HEIGHT_SCALED = 480;
+localparam FRAME_WIDTH_SCALED = 100;
+localparam FRAME_HEIGHT_SCALED = 100;
 
 logic clk = 0;
 logic rst_n = 0;
@@ -206,7 +206,7 @@ initial begin
     #10
     $display("Starting char write test...");
     $display("Writing char XY");
-    axi4_lite_write(.address(32'h504), .data(32'({16'd30, 16'd50})));
+    axi4_lite_write(.address(32'h504), .data(32'({16'd0, 16'd0})));
     #10
     $display("Writing char code");
     axi4_lite_write(.address(32'h508), .data(32'd4));

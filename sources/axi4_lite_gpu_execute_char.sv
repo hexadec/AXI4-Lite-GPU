@@ -33,6 +33,7 @@ localparam CHARACTER_COUNT = 8;
 enum logic [2:0] {  IDLE = 0,
                     BUSY_GETROW, 
                     BUSY_WRITE,
+                    BUSY_LASTWRITE,
                     DONE, 
                     ERR} state, next_state;
 
@@ -69,7 +70,7 @@ axi4_lite_gpu_char_rom #(
 );
 
 
-assign busy = state == BUSY_GETROW || state == BUSY_WRITE;
+assign busy = state == BUSY_GETROW || state == BUSY_WRITE || state == BUSY_LASTWRITE;
 assign done = state == DONE;
 assign err = state == ERR;
 
@@ -101,12 +102,14 @@ always_comb begin
         next_state = BUSY_WRITE;
     end else if (state == BUSY_WRITE) begin
         if (fbuf_pos_x == fbuf_max_x && fbuf_pos_y == fbuf_max_y) begin
-            next_state = DONE;
+            next_state = BUSY_LASTWRITE;
         end else if (char_pos_x == char_min_x) begin
             next_state = BUSY_GETROW;
         end else begin
             next_state = BUSY_WRITE;
         end
+    end else if (state == BUSY_LASTWRITE) begin
+        next_state = DONE;
     end else if (state == DONE) begin
         next_state = IDLE;
     end else if (state == ERR) begin
@@ -187,6 +190,17 @@ always_ff @(posedge clk) begin
                 char_pos_y <= 0;
             end
         end else if (state == BUSY_GETROW) begin
+            if (char_pos_y == 0) begin
+                if (fbuf_pos_x < fbuf_max_x) begin
+                    fbuf_pos_x <= fbuf_pos_x + 1;
+                end else begin
+                    fbuf_pos_x <= fbuf_min_x;
+                    if (fbuf_pos_y < fbuf_max_y) begin
+                        fbuf_pos_y <= fbuf_pos_y + 1;
+                    end
+                end
+                fbuf_addr_int <= (fbuf_pos_y) * FBUF_ADDR_WIDTH'(FRAME_WIDTH_SCALED) + fbuf_pos_x;
+            end
         end else if (state == BUSY_WRITE) begin
             if (fbuf_pos_x < fbuf_max_x) begin
                 fbuf_pos_x <= fbuf_pos_x + 1;
@@ -224,9 +238,9 @@ always_ff @(posedge clk) begin
 end
 
 
-assign fbuf_en_wr = state == BUSY_WRITE && character_row[char_pos_x];
-assign fbuf_wrea = state == BUSY_WRITE && character_row[char_pos_x];
-assign fbuf_addr = state == BUSY_WRITE && character_row[char_pos_x] ? fbuf_addr_int : 0;
-assign fbuf_data = state == BUSY_WRITE && character_row[char_pos_x] ? color_int : 0;
+assign fbuf_en_wr = (state == BUSY_WRITE || state == BUSY_LASTWRITE) && character_row[char_pos_x];
+assign fbuf_wrea = (state == BUSY_WRITE || state == BUSY_LASTWRITE) && character_row[char_pos_x];
+assign fbuf_addr = (state == BUSY_WRITE || state == BUSY_LASTWRITE) && character_row[char_pos_x] ? fbuf_addr_int : 0;
+assign fbuf_data = (state == BUSY_WRITE || state == BUSY_LASTWRITE) && character_row[char_pos_x] ? color_int : 0;
 
 endmodule
