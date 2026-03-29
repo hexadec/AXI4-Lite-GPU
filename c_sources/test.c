@@ -2,6 +2,20 @@
 #include <stdio.h>
 #include "platform.h"
 #include "xil_io.h"
+#include "sleep.h"
+
+void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
+    uint16_t char_code;
+    if (character >= 'A' && character <= 'Z') {
+        char_code = character - 'A';
+    } else {
+        char_code = character - '0' + 26;
+    }
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x504, ((uint32_t) x) << 16 | ((uint32_t) y));
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x508, char_code);
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x50C, ((uint32_t) color));
+    Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x500, 0);
+}
 
 void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x404, ((uint32_t) x0) << 16 | ((uint32_t) y0));
@@ -51,6 +65,18 @@ int main()
     drawCircle(width / 8, height / 8, 10, 0b00000011U);
     drawLine(width / 6, height / 6, width * 4 / 6, height * 2 / 6, 0b10000010U);
     drawPixel(width / 2, height / 2, 0b11111111U);
+    for (int i = 0; i < 26; i++) {
+        drawChar(i * 8 + 8, 8, 'A' + i, i);
+        if (i % 3 == 0) {
+            sleep(1);
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        drawChar(i * 8 + 8, 16, '0' + i, i);
+        if (i % 3 == 0) {
+            sleep(1);
+        }
+    }
     cleanup_platform();
     return 0;
 }
