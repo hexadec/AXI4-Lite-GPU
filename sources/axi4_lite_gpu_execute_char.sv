@@ -28,7 +28,7 @@ module axi4_lite_gpu_execute_char #(
 
 localparam CHAR_WIDTH = 8;
 localparam CHAR_HEIGHT = 8;
-localparam CHARACTER_COUNT = 8;
+localparam CHARACTER_COUNT = 18;
 
 enum logic [2:0] {  IDLE = 0,
                     BUSY_GETROW, 
