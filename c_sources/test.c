@@ -8,8 +8,10 @@ void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
     uint16_t char_code;
     if (character >= 'A' && character <= 'Z') {
         char_code = character - 'A';
+    } else if (character >= ' ' && character <= '9') {
+        char_code = character - ' ' + 26;
     } else {
-        char_code = character - '0' + 26;
+        return;
     }
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x504, ((uint32_t) x) << 16 | ((uint32_t) y));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x508, char_code);
@@ -71,7 +73,7 @@ int main()
             sleep(1);
         }
     }
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 10; i++) {
         drawChar(i * 8 + 8, 16, '0' + i, i);
         if (i % 3 == 0) {
             sleep(1);
