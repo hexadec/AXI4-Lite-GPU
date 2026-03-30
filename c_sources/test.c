@@ -6,10 +6,8 @@
 
 void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
     uint16_t char_code;
-    if (character >= 'A' && character <= 'Z') {
-        char_code = character - 'A';
-    } else if (character >= ' ' && character <= '9') {
-        char_code = character - ' ' + 26;
+    if (character >= ' ' && character <= '`') {
+        char_code = character - ' ';
     } else {
         return;
     }
