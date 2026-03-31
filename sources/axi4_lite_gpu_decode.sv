@@ -27,7 +27,10 @@ module axi4_lite_gpu_decode #(
     output reg fbuf_wrea,
     output reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr,
     output reg [FBUF_DATA_WIDTH - 1 : 0] fbuf_data,
-    output reg fbuf_rst_req_n
+    output reg fbuf_rst_req_n,
+    // GPU status information to be forwarded to PS when queried
+    input ring_buffer_full,
+    input ring_buffer_empty
 );
 
 reg read_processing_done_reg;
@@ -507,7 +510,7 @@ always_ff @(posedge clk) begin
     end else begin
         if (read_processing_start) begin
             if (read_address == 32'h0) begin // Use 0x00 as status register
-                read_data_reg <= {27'h0, fbuf_rst_busy, read_processing_start, read_processing_done_reg, write_processing_start, write_processing_done};
+                read_data_reg <= {25'h0, ring_buffer_empty, ring_buffer_full, fbuf_rst_busy, read_processing_start, read_processing_done_reg, write_processing_start, write_processing_done};
                 read_processing_done_reg <= 1;
                 read_resp_ok_reg <= 1;
             end else if (read_address == 32'h4) begin // Use 0x04 as state register

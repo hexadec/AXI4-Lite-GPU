@@ -85,6 +85,9 @@ wire decoder_write_processing_done;
 wire [15:0] decoder_write_address;
 wire [AXI_DATA_WIDTH - 1:0] decoder_write_data;
 
+wire ring_buffer_full;
+wire ring_buffer_empty;
+
 axi4_lite_gpu_ring_buffer #(
     .ADDRESS_WIDTH(16),
     .DATA_WIDTH(AXI_DATA_WIDTH),
@@ -104,7 +107,10 @@ axi4_lite_gpu_ring_buffer #(
     .decoder_write_address(decoder_write_address),
     .decoder_write_data(decoder_write_data),
     .decoder_write_processing_ok(decoder_write_processing_ok),
-    .decoder_write_processing_done(decoder_write_processing_done)
+    .decoder_write_processing_done(decoder_write_processing_done),
+    // GPU status information
+    .buffer_full(ring_buffer_full),
+    .buffer_empty(ring_buffer_empty)
 );
 
 axi4_lite_gpu_decode #(
@@ -132,7 +138,9 @@ axi4_lite_gpu_decode #(
     .fbuf_wrea(fbuf_wrea_int),
     .fbuf_addr(fbuf_addr_int),
     .fbuf_data(fbuf_data_int),
-    .fbuf_rst_req_n(fbuf_rst_req_n_int)
+    .fbuf_rst_req_n(fbuf_rst_req_n_int),
+    .ring_buffer_full(ring_buffer_full),
+    .ring_buffer_empty(ring_buffer_empty)
 );
 
 always @(posedge s_axi_ctrl_aclk) begin

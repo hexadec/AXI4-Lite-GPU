@@ -4,6 +4,7 @@
 #include "xil_io.h"
 #include "sleep.h"
 
+
 void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
     uint16_t char_code;
     if (character >= ' ' && character <= '~') {
@@ -15,6 +16,22 @@ void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x508, char_code);
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x50C, ((uint32_t) color));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x500, 0);
+}
+
+void drawText(uint16_t x, uint16_t y, char * text, uint8_t color) {
+    uint32_t height_x_width = Xil_In32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 8);
+    uint32_t height = height_x_width >> 16;
+    uint32_t width = height_x_width & 0xffff;
+    int idx = 0;
+    while (text[idx] != 0) {
+        uint16_t x_pos = (x + idx * 8) % width;
+        uint16_t y_pos = (y + ((x + idx * 8) / width) * 8) % height;
+        drawChar(x_pos, y_pos, text[idx], color);
+        idx++;
+        if (Xil_In32(XPAR_AXI4_LITE_GPU_0_BASEADDR) & 0b100000) {
+            msleep(100);
+        }
+    }
 }
 
 void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
@@ -65,18 +82,11 @@ int main()
     drawCircle(width / 8, height / 8, 10, 0b00000011U);
     drawLine(width / 6, height / 6, width * 4 / 6, height * 2 / 6, 0b10000010U);
     drawPixel(width / 2, height / 2, 0b11111111U);
-    for (int i = 0; i < 26; i++) {
-        drawChar(i * 8 + 8, 8, 'A' + i, i);
-        if (i % 3 == 0) {
-            sleep(1);
-        }
-    }
-    for (int i = 0; i < 10; i++) {
-        drawChar(i * 8 + 8, 16, '0' + i, i);
-        if (i % 3 == 0) {
-            sleep(1);
-        }
-    }
+    drawText(48, 8, "AXI4-LITE-GPU text test #1", 0b11100011);
+    drawText(48, 16, "ABCDEFGHIJKLMNOPQRSTUQVXYZ #2", 0b11110010);
+    drawText(48, 24, "abcdefghijklmnopqrstuvwxyz #3", 0b10010010);
+    drawText(48, 32, "0123456789-_*.:<>?,;[]{}^! #4", 0b00110011);
+    drawText(48, 40, "()+~'\"`/\\|@$&=%# #5", 0b01001011);
     cleanup_platform();
     return 0;
 }

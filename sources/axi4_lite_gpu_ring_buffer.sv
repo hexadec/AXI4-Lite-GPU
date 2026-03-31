@@ -17,7 +17,10 @@ module axi4_lite_gpu_ring_buffer #(
     output [ADDRESS_WIDTH - 1 : 0] decoder_write_address,
     output [DATA_WIDTH - 1 : 0] decoder_write_data,
     input decoder_write_processing_ok,
-    input decoder_write_processing_done
+    input decoder_write_processing_done,
+    // Status
+    output buffer_full,
+    output buffer_empty
 );
 
 generate
@@ -25,9 +28,6 @@ generate
         $error("AXI4-LITE GPU buffer size must be a power of 2 (%d)", BUFFER_SIZE);
     end
 endgenerate
-
-wire buffer_full;
-wire buffer_empty;
 
 reg [ADDRESS_WIDTH - 1 : 0] address_buffer [BUFFER_SIZE - 1 : 0];
 reg [DATA_WIDTH - 1 : 0] data_buffer [BUFFER_SIZE - 1 : 0];
