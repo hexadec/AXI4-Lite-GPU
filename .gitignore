@@ -16,3 +16,4 @@ block_design
 /reports/*.txt
 ps7_init*
 xvlog.pb
+regenerate_bd

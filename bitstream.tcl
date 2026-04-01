@@ -16,6 +16,7 @@ set_msg_config -id [41-2383] -new_severity ERROR; # Width mismatch when connecti
 set_msg_config -id [41-758] -new_severity ERROR; # The following clock pins are not connected to a valid clock source
 set_msg_config -id [8-689] -new_severity ERROR; # Width of port connection does not match port width of module
 
+reset_run synthesis1
 reset_run implementation1
 launch_runs implementation1 -to_step write_bitstream -jobs 4
 wait_on_runs implementation1

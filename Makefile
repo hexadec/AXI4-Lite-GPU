@@ -1,11 +1,25 @@
 project_name := $(shell basename $(shell pwd))
 vivado_folder := ~/Software/AMD/2025.2/Vivado/bin
 
-all: clean $(project_name).xpr
+SOURCES := $(wildcard sources/*)
+TESTS := $(wildcard testbench/*)
+CONSTRAINTS := $(wildcard constraints/*)
+MEM := $(wildcard mem/*)
 
-$(project_name).xpr: project.tcl
+all: project
+
+project: $(project_name).xpr;
+
+$(project_name).xpr: project.tcl block_design.tcl $(SOURCES) $(TESTS) $(CONSTRAINTS) $(MEM)
 	@echo Building with Vivado...
 	${vivado_folder}/vivado -mode batch -source project.tcl -verbose
+	${vivado_folder}/vivado -mode batch -source block_design.tcl -verbose
+	@touch regenerate_bd
+
+regenerate_bd: $(SOURCES) block_design.tcl
+	@echo Regenerating block design with Vivado...
+	${vivado_folder}/vivado -mode batch -source block_design.tcl -verbose
+	@touch regenerate_bd
 
 bitstream: $(project_name).runs/implementation1/design_1_wrapper.bit;
 
@@ -32,5 +46,5 @@ clean:
 	rm -rf ${project_name}.ip_user_files ${project_name}.runs ${project_name}.sim
 	rm -rf block_design .Xil NA
 	rm -f *.xsa *.bit ps7_init* xvlog.pb
-	rm -f ${project_name}.xpr
+	rm -f ${project_name}.xpr regenerate_bd
 	rm -f vivado*.log vivado*.jou
