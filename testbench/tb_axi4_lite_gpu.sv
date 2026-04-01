@@ -112,12 +112,26 @@ endtask
 
 always #5 clk = ~clk;
 
-assert property (@(posedge clk) !rst_n |-> !s_axi_ctrl_rvalid && !s_axi_ctrl_bvalid)  else $error("All xVALID signals SHOULD be LOW during reset");
+// All xVALID signals MUST be LOW during reset
+assert property (@(posedge clk) !rst_n |-> !s_axi_ctrl_rvalid && !s_axi_ctrl_bvalid)  else $error("All xVALID signals MUST be LOW during reset");
 
-assert property (@(posedge clk) !rst_n |-> !s_axi_ctrl_arready && !s_axi_ctrl_awready && !s_axi_ctrl_wready) else $error("All xREADY signals SHOULD be LOW during reset");
+// ALL xREADY signals MUST be LOW during reset
+assert property (@(posedge clk) !rst_n |-> !s_axi_ctrl_arready && !s_axi_ctrl_awready && !s_axi_ctrl_wready) else $error("All xREADY signals MUST be LOW during reset");
+
+//ARREADY MUST be HIGH after one clock cycle of ARVALID
+assert property (@(posedge clk) s_axi_ctrl_arvalid |-> ##1 s_axi_ctrl_arready) else $error("ARREADY MUST be HIGH after one clock cycle of ARVALID");
+
+//AWREADY MUST be HIGH after one clock cycle of AWVALID
+assert property (@(posedge clk) s_axi_ctrl_awvalid |-> ##1 s_axi_ctrl_awready) else $error("AWREADY MUST be HIGH after one clock cycle of AWVALID");
+
+//WREADY MUST be HIGH after one clock cycle of WVALID
+assert property (@(posedge clk) s_axi_ctrl_wvalid |-> ##1 s_axi_ctrl_wready) else $error("WREADY MUST be HIGH after one clock cycle of WVALID");
+
+//BVALID MUST be HIGH after one-three clock cycles of WVALID and AWVALID
+assert property (@(posedge clk) ((s_axi_ctrl_wvalid ##[0:4] s_axi_ctrl_awvalid || s_axi_ctrl_awvalid ##[0:4] s_axi_ctrl_wvalid)) |-> ##[1:3] s_axi_ctrl_bvalid) else $error("BVALID MUST be HIGH after one-three clock cycles of WVALID and AWVALID");
 
 int test_read_addresses[4] = '{0, 4, 8, 12};
-int test_read_data[4] = '{32'h18, 32'h00, {16'(FRAME_HEIGHT_SCALED), 16'(FRAME_WIDTH_SCALED)}, 32'hffffffff};
+int test_read_data[4] = '{32'h58, 32'h00, {16'(FRAME_HEIGHT_SCALED), 16'(FRAME_WIDTH_SCALED)}, 32'hffffffff};
 logic [1:0] test_read_responses[4] = '{2'b00, 2'b00, 2'b00, 2'b10};
 
 initial begin

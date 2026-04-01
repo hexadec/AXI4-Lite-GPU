@@ -8,6 +8,7 @@ This is a very simple 2D GPU, intended to help me learn logic design. Currently 
 - Draw filled rectangle
 - Draw filled circle
 - Draw filled triangle
+- Draw 7-bit ASCII characters
 - Timing constraints met at 150 MHz on -1 speed grade (120 MHz @ 640x480)
 - 640x480@60Hz -> 4K@24Hz with 1-8x linear upscaling
 - Build and program board with make
@@ -15,7 +16,7 @@ This is a very simple 2D GPU, intended to help me learn logic design. Currently 
 - Configure project from project.tcl
 
 ## Planned features
-- Draw characters (using a simple 8x16 font)
+- Out-of-order execution
 - Draw ellipses / rounded rectanges
 - Double buffering
 - Improve pipelining
