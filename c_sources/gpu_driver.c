@@ -1,11 +1,8 @@
-#include <stdint.h>
-#include <stdio.h>
-#include "platform.h"
 #include "xil_io.h"
 #include "sleep.h"
+#include "gpu_driver.h"
 
-
-void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
+void axi4_lite_gpu_draw_char(uint16_t x, uint16_t y, char character, uint8_t color) {
     uint16_t char_code;
     if (character >= ' ' && character <= '~') {
         char_code = character - ' ';
@@ -18,7 +15,7 @@ void drawChar(uint16_t x, uint16_t y, char character, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x500, 0);
 }
 
-void drawText(uint16_t x, uint16_t y, char * text, uint8_t color) {
+void axi4_lite_gpu_draw_string(uint16_t x, uint16_t y, char * text, uint8_t color) {
     uint32_t height_x_width = Xil_In32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 8);
     uint32_t height = height_x_width >> 16;
     uint32_t width = height_x_width & 0xffff;
@@ -26,7 +23,7 @@ void drawText(uint16_t x, uint16_t y, char * text, uint8_t color) {
     while (text[idx] != 0) {
         uint16_t x_pos = (x + idx * 8) % width;
         uint16_t y_pos = (y + ((x + idx * 8) / width) * 8) % height;
-        drawChar(x_pos, y_pos, text[idx], color);
+        axi4_lite_gpu_draw_char(x_pos, y_pos, text[idx], color);
         idx++;
         if (Xil_In32(XPAR_AXI4_LITE_GPU_0_BASEADDR) & 0b100000) {
             msleep(100);
@@ -34,21 +31,21 @@ void drawText(uint16_t x, uint16_t y, char * text, uint8_t color) {
     }
 }
 
-void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
+void axi4_lite_gpu_draw_line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x404, ((uint32_t) x0) << 16 | ((uint32_t) y0));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x408, ((uint32_t) x1) << 16 | ((uint32_t) y1));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x40C, ((uint32_t) color));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x400, 0);
 }
 
-void drawCircle(uint16_t center_x, uint16_t center_y, uint16_t radius, uint8_t color) {
+void axi4_lite_gpu_draw_circle(uint16_t center_x, uint16_t center_y, uint16_t radius, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x304, ((uint32_t) center_x) << 16 | ((uint32_t) center_y));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x308, ((uint32_t) radius));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x30C, ((uint32_t) color));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x300, 0);
 }
 
-void drawTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint8_t color) {
+void axi4_lite_gpu_draw_triangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x204, ((uint32_t) x0) << 16 | ((uint32_t) y0));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x208, ((uint32_t) x1) << 16 | ((uint32_t) y1));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x20C, ((uint32_t) x2) << 16 | ((uint32_t) y2));
@@ -56,37 +53,13 @@ void drawTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x200, 0);
 }
 
-void drawRect(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
+void axi4_lite_gpu_draw_rect(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x104, ((uint32_t) x0) << 16 | ((uint32_t) y0));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x108, ((uint32_t) x1) << 16 | ((uint32_t) y1));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x10C, ((uint32_t) color));
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0x100, 0);
 }
 
-void drawPixel(uint16_t x, uint16_t y, uint8_t color) {
+void axi4_lite_gpu_draw_pixel(uint16_t x, uint16_t y, uint8_t color) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR, ((uint32_t) x) << 20 | ((uint32_t) y) << 8 | ((uint32_t) color));
-}
-
-
-int main()
-{
-    init_platform();
-    uint32_t height_x_width = Xil_In32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 8);
-    uint32_t height = height_x_width >> 16;
-    uint32_t width = height_x_width & 0xffff;
-    drawRect(0, 0, width - 1, height - 1, 0b11111111U);
-    drawRect(4, 4, width - 5, height - 5, 0b00100100U);
-    drawTriangle(0, 0, width - 1, height - 1, 0, height - 1, 0b00011100U);
-    drawRect(width / 4, height / 4, width * 3 / 4, height * 3 / 4, 0b11111100U);
-    drawTriangle(width * 3 / 4, height / 4, width * 3 / 4, height * 3 / 4, width / 4, height * 3 / 4, 0b11100000U);
-    drawCircle(width / 8, height / 8, 10, 0b00000011U);
-    drawLine(width / 6, height / 6, width * 4 / 6, height * 2 / 6, 0b10000010U);
-    drawPixel(width / 2, height / 2, 0b11111111U);
-    drawText(48, 8, "AXI4-LITE-GPU text test #1", 0b11100011);
-    drawText(48, 16, "ABCDEFGHIJKLMNOPQRSTUQVXYZ #2", 0b11110010);
-    drawText(48, 24, "abcdefghijklmnopqrstuvwxyz #3", 0b10010010);
-    drawText(48, 32, "0123456789-_*.:<>?,;[]{}^! #4", 0b00110011);
-    drawText(48, 40, "()+~'\"`/\\|@$&=%# #5", 0b01001011);
-    cleanup_platform();
-    return 0;
 }
