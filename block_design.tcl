@@ -110,6 +110,17 @@ set_property -dict [list \
   CONFIG.PCW_SD0_PERIPHERAL_ENABLE {0} \
   CONFIG.PCW_USB0_PERIPHERAL_ENABLE {0} \
   CONFIG.PCW_QSPI_PERIPHERAL_ENABLE {0} \
+  CONFIG.PCW_USE_S_AXI_HP0 {1} \
+  CONFIG.PCW_USE_S_AXI_HP2 {1} \
+  CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {64} \
+  CONFIG.PCW_S_AXI_HP2_DATA_WIDTH {64} \
+  CONFIG.PCW_UIPARAM_DDR_ADV_ENABLE {1} \
+  CONFIG.PCW_DDR_HPR_TO_CRITICAL_PRIORITY_LEVEL {2} \
+  CONFIG.PCW_DDR_LPR_TO_CRITICAL_PRIORITY_LEVEL {15} \
+  CONFIG.PCW_DDR_WRITE_TO_CRITICAL_PRIORITY_LEVEL {7} \
+  CONFIG.PCW_DDR_PORT2_HPR_ENABLE {1} \
+  CONFIG.PCW_DDR_PRIORITY_READPORT_2 {Medium} \
+  CONFIG.PCW_DDR_PRIORITY_WRITEPORT_3 {Medium} \
 ] [get_bd_cells processing_system7_0]
 
 if {$output_resolution == "640x480"} {
@@ -253,6 +264,8 @@ connect_bd_net [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins pro
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins proc_sys_reset_0/slowest_sync_clk]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins clk_wiz_0/clk_in1]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins processing_system7_0/S_AXI_HP2_ACLK]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins test_pattern_generat_0/clk]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins framebuffer_0/clk_wr]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins axi4_lite_gpu_0/s_axi_ctrl_aclk]
