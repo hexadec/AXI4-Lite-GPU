@@ -110,15 +110,10 @@ initial begin
     rst_n = 1;
     #10
     fbuf_write(32'hf001, 32'hf1);
-    #10
     axi4_lite_accept_write();
-    #10
     fbuf_write(32'hf002, 32'hf2);
-    #10
     fbuf_write(32'hf003, 32'hf3);
-    #10
     axi4_lite_accept_write();
-    #10
     axi4_lite_accept_write();
     #100
     $finish();

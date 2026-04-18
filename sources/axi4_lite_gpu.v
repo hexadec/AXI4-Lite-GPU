@@ -4,7 +4,8 @@ module axi4_lite_gpu #(
     parameter AXI_ADDRESS_WIDTH = 32,
     parameter AXI_DATA_WIDTH = 32,
     parameter FBUF_ADDR_WIDTH = 19,
-    parameter FBUF_DATA_WIDTH = 8
+    parameter FBUF_DATA_WIDTH = 8,
+    parameter AXI_DMA_BASE_ADDR = 32'h00
 ) (
     // AXI global signals
     input s_axi_ctrl_aclk,
@@ -31,21 +32,31 @@ module axi4_lite_gpu #(
     output s_axi_ctrl_bvalid,
     input s_axi_ctrl_bready,
 
-    // Framebuffer BRAM connection (write only)
-    input fbuf_rst_busy,
-    output reg fbuf_en_wr,
-    output reg fbuf_wrea,
-    output reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr,
-    output reg [FBUF_DATA_WIDTH - 1 : 0] fbuf_data,
-    output reg fbuf_rst_req_n
+    // AXI global signals
+    input m_axi_fbuf_aclk,
+    input m_axi_fbuf_aresetn,
+    // Read address channel
+    output [AXI_ADDRESS_WIDTH - 1 : 0] m_axi_fbuf_araddr,
+    output m_axi_fbuf_arvalid,
+    input m_axi_fbuf_arready,
+    // Read data channel
+    input [AXI_DATA_WIDTH - 1 : 0] m_axi_fbuf_rdata,
+    input [1:0] m_axi_fbuf_rresp,
+    input m_axi_fbuf_rvalid,
+    output m_axi_fbuf_rready,
+    // Write address channel
+    output [AXI_ADDRESS_WIDTH - 1 : 0] m_axi_fbuf_awaddr,
+    output m_axi_fbuf_awvalid,
+    input m_axi_fbuf_awready,
+    // Write data channel
+    output [AXI_DATA_WIDTH - 1 : 0] m_axi_fbuf_wdata,
+    output m_axi_fbuf_wvalid,
+    input m_axi_fbuf_wready,
+    // Write response channel
+    input [1:0] m_axi_fbuf_bresp,
+    input m_axi_fbuf_bvalid,
+    output m_axi_fbuf_bready
 );
-
-
-wire fbuf_en_wr_int;
-wire fbuf_wrea_int;
-wire [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
-wire [FBUF_DATA_WIDTH - 1 : 0] fbuf_data_int;
-wire fbuf_rst_req_n_int;
 
 // Store read address from R channel and manage responses
 reg read_transaction_ok;
@@ -87,6 +98,9 @@ wire [AXI_DATA_WIDTH - 1:0] decoder_write_data;
 
 wire ring_buffer_full;
 wire ring_buffer_empty;
+
+// Framebuffer AXI
+wire fbuf_bus_stalled;
 
 axi4_lite_gpu_ring_buffer #(
     .ADDRESS_WIDTH(16),
@@ -143,13 +157,37 @@ axi4_lite_gpu_decode #(
     .ring_buffer_empty(ring_buffer_empty)
 );
 
-always @(posedge s_axi_ctrl_aclk) begin
-    fbuf_en_wr <= fbuf_en_wr_int;
-    fbuf_wrea <= fbuf_wrea_int;
-    fbuf_addr <= fbuf_addr_int;
-    fbuf_data <= fbuf_data_int;
-    fbuf_rst_req_n <= fbuf_rst_req_n_int;
-end
+bram_to_axi4_lite_dma #(
+    .BRAM_ADDRESS_WIDTH(FBUF_ADDR_WIDTH),
+    .BRAM_DATA_WIDTH(FBUF_DATA_WIDTH),
+    .AXI_ADDRESS_WIDTH(AXI_ADDRESS_WIDTH),
+    .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+    .AXI_DMA_BASE_ADDR(AXI_DMA_BASE_ADDR),
+    .BUFFER_SIZE(128)
+) bram_to_axi4_lite_dma_inst (
+    // AXI global signals
+    .m_axi_fbuf_aclk(m_axi_fbuf_aclk),
+    .m_axi_fbuf_aresetn(m_axi_fbuf_aresetn),
+    // Write address channel
+    .m_axi_fbuf_awaddr(m_axi_fbuf_awaddr),
+    .m_axi_fbuf_awvalid(m_axi_fbuf_awvalid),
+    .m_axi_fbuf_awready(m_axi_fbuf_awready),
+    // Write data channel
+    .m_axi_fbuf_wdata(m_axi_fbuf_wdata),
+    .m_axi_fbuf_wvalid(m_axi_fbuf_wvalid),
+    .m_axi_fbuf_wready(m_axi_fbuf_wready),
+    // Write response channel
+    .m_axi_fbuf_bresp(m_axi_fbuf_bresp),
+    .m_axi_fbuf_bvalid(m_axi_fbuf_bvalid),
+    .m_axi_fbuf_bready(m_axi_fbuf_bready),
+
+    // BRAM controller connection (write only)
+    .fbuf_bus_stalled(fbuf_bus_stalled),
+    .fbuf_en_wr(fbuf_en_wr_int),
+    .fbuf_wrea(fbuf_wrea_int),
+    .fbuf_addr(fbuf_addr_int),
+    .fbuf_data(fbuf_data_int)
+);
 
 localparam RESP_OKAY = 2'b00;
 localparam RESP_SLVERR = 2'b10;

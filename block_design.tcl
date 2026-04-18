@@ -89,6 +89,8 @@ apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config { \
 create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0
 create_bd_cell -type ip -vlnv digilentinc.com:ip:rgb2dvi:1.4 rgb2dvi_0
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vdma:6.3 axi_vdma_0
+create_bd_cell -type ip -vlnv xilinx.com:ip:v_axi4s_vid_out:4.0 v_axi4s_vid_out_0
 create_bd_cell -type module -reference block block_0
 create_bd_cell -type module -reference btn_debounce mux_sel_debounce_0
 create_bd_cell -type module -reference framebuffer_with_reset framebuffer_0
@@ -98,6 +100,10 @@ create_bd_cell -type module -reference color_converter color_converter_0
 create_bd_cell -type module -reference test_pattern_generator test_pattern_generat_0
 create_bd_cell -type module -reference axi4_lite_gpu axi4_lite_gpu_0
 
+create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconn_gpu_2_ddr
+create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconn_gp0_2_gpu
+create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconn_gp1_2_vdma
+
 set_property -dict [list \
   CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {300} \
   CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {400} \
@@ -105,6 +111,7 @@ set_property -dict [list \
   CONFIG.PCW_EN_CLK1_PORT {1} \
   CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {150} \
   CONFIG.PCW_USE_M_AXI_GP0 {1} \
+  CONFIG.PCW_USE_M_AXI_GP1 {1} \
   CONFIG.PCW_ENET0_PERIPHERAL_ENABLE {0} \
   CONFIG.PCW_QSPI_GRP_SINGLE_SS_ENABLE {0} \
   CONFIG.PCW_SD0_PERIPHERAL_ENABLE {0} \
@@ -112,8 +119,8 @@ set_property -dict [list \
   CONFIG.PCW_QSPI_PERIPHERAL_ENABLE {0} \
   CONFIG.PCW_USE_S_AXI_HP0 {1} \
   CONFIG.PCW_USE_S_AXI_HP2 {1} \
-  CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {64} \
-  CONFIG.PCW_S_AXI_HP2_DATA_WIDTH {64} \
+  CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {32} \
+  CONFIG.PCW_S_AXI_HP2_DATA_WIDTH {32} \
   CONFIG.PCW_UIPARAM_DDR_ADV_ENABLE {1} \
   CONFIG.PCW_DDR_HPR_TO_CRITICAL_PRIORITY_LEVEL {2} \
   CONFIG.PCW_DDR_LPR_TO_CRITICAL_PRIORITY_LEVEL {15} \
@@ -121,7 +128,19 @@ set_property -dict [list \
   CONFIG.PCW_DDR_PORT2_HPR_ENABLE {1} \
   CONFIG.PCW_DDR_PRIORITY_READPORT_2 {Medium} \
   CONFIG.PCW_DDR_PRIORITY_WRITEPORT_3 {Medium} \
+  CONFIG.PCW_IRQ_F2P_INTR {1} \
+  CONFIG.PCW_USE_FABRIC_INTERRUPT {1} \
 ] [get_bd_cells processing_system7_0]
+
+set_property -dict [list \
+  CONFIG.c_include_s2mm {0} \
+  CONFIG.c_m_axi_mm2s_data_width {32} \
+  CONFIG.c_num_fstores {1} \
+] [get_bd_cells axi_vdma_0]
+
+set_property CONFIG.NUM_SI {1} [get_bd_cells smartconn_gpu_2_ddr]
+set_property CONFIG.NUM_SI {1} [get_bd_cells smartconn_gp0_2_gpu]
+set_property CONFIG.NUM_SI {1} [get_bd_cells smartconn_gp1_2_vdma]
 
 if {$output_resolution == "640x480"} {
   puts "Create SerialClk with Clocking Wizard in case of 640x480p"
@@ -269,6 +288,7 @@ connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins process
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins test_pattern_generat_0/clk]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins framebuffer_0/clk_wr]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins axi4_lite_gpu_0/s_axi_ctrl_aclk]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins axi4_lite_gpu_0/m_axi_fbuf_aclk]
 connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins mux_sel_debounce_0/clk]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins clk_wiz_0/resetn]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins test_pattern_generat_0/rst_n]
@@ -291,11 +311,6 @@ connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fbuf2rgb_0/clk]
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins color_converter_0/clk]
 connect_bd_net [get_bd_pins clk_wiz_0/locked] [get_bd_pins fbuf2rgb_0/rst_n]
 connect_bd_net [get_bd_pins clk_wiz_0/locked] [get_bd_pins rgb2dvi_0/aRst_n]
-connect_bd_net [get_bd_pins axi4_lite_gpu_0/fbuf_en_wr] [get_bd_pins framebuffer_mux_0/ch0_fbuf_en_wr]
-connect_bd_net [get_bd_pins axi4_lite_gpu_0/fbuf_wrea] [get_bd_pins framebuffer_mux_0/ch0_fbuf_wrea]
-connect_bd_net [get_bd_pins axi4_lite_gpu_0/fbuf_addr] [get_bd_pins framebuffer_mux_0/ch0_fbuf_addr]
-connect_bd_net [get_bd_pins axi4_lite_gpu_0/fbuf_data] [get_bd_pins framebuffer_mux_0/ch0_fbuf_data]
-connect_bd_net [get_bd_pins axi4_lite_gpu_0/fbuf_rst_req_n] [get_bd_pins framebuffer_mux_0/ch0_fbuf_rst_req_n]
 connect_bd_net [get_bd_pins test_pattern_generat_0/pixel_fbuf_wr_en] [get_bd_pins framebuffer_mux_0/ch1_fbuf_en_wr]
 connect_bd_net [get_bd_pins test_pattern_generat_0/pixel_fbuf_wr_en] [get_bd_pins framebuffer_mux_0/ch1_fbuf_wrea]
 connect_bd_net [get_bd_pins test_pattern_generat_0/pixel_fbuf_address] [get_bd_pins framebuffer_mux_0/ch1_fbuf_addr]
@@ -308,7 +323,6 @@ connect_bd_net [get_bd_pins framebuffer_mux_0/fbuf_addr] [get_bd_pins framebuffe
 connect_bd_net [get_bd_pins framebuffer_mux_0/fbuf_data] [get_bd_pins framebuffer_0/din]
 connect_bd_net [get_bd_pins framebuffer_mux_0/fbuf_rst_req_n] [get_bd_pins framebuffer_0/rst_req_n]
 connect_bd_net [get_bd_pins framebuffer_0/dout] [get_bd_pins color_converter_0/in_color]
-connect_bd_net [get_bd_pins framebuffer_0/rst_busy] [get_bd_pins axi4_lite_gpu_0/fbuf_rst_busy]
 connect_bd_net [get_bd_pins color_converter_0/out_color] [get_bd_pins rgb2dvi_0/vid_pData]
 connect_bd_net [get_bd_pins fbuf2rgb_0/hsync] [get_bd_pins rgb2dvi_0/vid_pHSync]
 connect_bd_net [get_bd_pins fbuf2rgb_0/vsync] [get_bd_pins rgb2dvi_0/vid_pVSync]
@@ -316,19 +330,37 @@ connect_bd_net [get_bd_pins fbuf2rgb_0/vde] [get_bd_pins rgb2dvi_0/vid_pVDE]
 connect_bd_net [get_bd_pins fbuf2rgb_0/pixel_fbuf_address] [get_bd_pins framebuffer_0/addr_rd]
 connect_bd_net [get_bd_pins fbuf2rgb_0/pixel_fbuf_address_valid] [get_bd_pins framebuffer_0/en_rd]
 
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \
-  Clk_master { /processing_system7_0/FCLK_CLK1} \
-  Clk_slave {/processing_system7_0/FCLK_CLK1} \
-  Clk_xbar {/processing_system7_0/FCLK_CLK1} \
-  Master {/processing_system7_0/M_AXI_GP0} \
-  Slave {/axi4_lite_gpu_0/s_axi_ctrl} \
-  ddr_seg {Auto} \
-  intc_ip {New AXI SmartConnect} \
-  master_apm {0}\
-}  [get_bd_intf_pins axi4_lite_gpu_0/s_axi_ctrl]
+connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins processing_system7_0/M_AXI_GP1_ACLK]
+connect_bd_intf_net [get_bd_intf_pins axi_vdma_0/M_AXIS_MM2S] [get_bd_intf_pins v_axi4s_vid_out_0/video_in]
+connect_bd_net [get_bd_pins v_axi4s_vid_out_0/aclk] [get_bd_pins processing_system7_0/FCLK_CLK1]
+connect_bd_net [get_bd_pins axi_vdma_0/m_axis_mm2s_aclk] [get_bd_pins processing_system7_0/FCLK_CLK1]
+connect_bd_net [get_bd_pins v_axi4s_vid_out_0/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+connect_bd_net [get_bd_pins axi_vdma_0/mm2s_introut] [get_bd_pins processing_system7_0/IRQ_F2P]
 
-set_property offset 0x40000000 [get_bd_addr_segs {processing_system7_0/Data/SEG_axi4_lite_gpu_0_reg0}]
-set_property range 8M [get_bd_addr_segs {processing_system7_0/Data/SEG_axi4_lite_gpu_0_reg0}]
+connect_bd_intf_net [get_bd_intf_pins axi4_lite_gpu_0/m_axi_fbuf] [get_bd_intf_pins smartconn_gpu_2_ddr/S00_AXI]
+connect_bd_intf_net [get_bd_intf_pins smartconn_gpu_2_ddr/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP0]
+connect_bd_net [get_bd_pins smartconn_gpu_2_ddr/aclk] [get_bd_pins processing_system7_0/FCLK_CLK1]
+connect_bd_net [get_bd_pins smartconn_gpu_2_ddr/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+
+connect_bd_intf_net [get_bd_intf_pins processing_system7_0/M_AXI_GP0] [get_bd_intf_pins smartconn_gp0_2_gpu/S00_AXI]
+connect_bd_intf_net [get_bd_intf_pins smartconn_gp0_2_gpu/M00_AXI] [get_bd_intf_pins axi4_lite_gpu_0/s_axi_ctrl]
+connect_bd_net [get_bd_pins smartconn_gp0_2_gpu/aclk] [get_bd_pins processing_system7_0/FCLK_CLK1]
+connect_bd_net [get_bd_pins smartconn_gp0_2_gpu/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+
+connect_bd_intf_net [get_bd_intf_pins processing_system7_0/M_AXI_GP1] [get_bd_intf_pins smartconn_gp1_2_vdma/S00_AXI]
+connect_bd_intf_net [get_bd_intf_pins smartconn_gp1_2_vdma/M00_AXI] [get_bd_intf_pins axi_vdma_0/S_AXI_LITE]
+connect_bd_net [get_bd_pins /axi_vdma_0/s_axi_lite_aclk] [get_bd_pins processing_system7_0/FCLK_CLK1]
+connect_bd_net [get_bd_pins smartconn_gp1_2_vdma/aclk] [get_bd_pins processing_system7_0/FCLK_CLK1]
+connect_bd_net [get_bd_pins smartconn_gp1_2_vdma/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \
+  Clk_master {Auto} Clk_slave {/processing_system7_0/FCLK_CLK1 (150 MHz)} \
+  Clk_xbar {Auto} Master {/axi_vdma_0/M_AXI_MM2S} \
+  Slave {/processing_system7_0/S_AXI_HP2} \
+  ddr_seg {Auto} \
+  intc_ip {Auto} \
+  master_apm {0} \
+}  [get_bd_intf_pins processing_system7_0/S_AXI_HP2]
 
 regenerate_bd_layout
 save_bd_design

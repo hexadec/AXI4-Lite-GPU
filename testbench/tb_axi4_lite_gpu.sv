@@ -32,13 +32,19 @@ logic [1:0] s_axi_ctrl_bresp;
 logic s_axi_ctrl_bvalid;
 logic s_axi_ctrl_bready = 0;
 
-// Framebuffer BRAM connection (write only)
-logic fbuf_rst_busy;
-logic fbuf_en_wr;
-logic fbuf_wrea;
-logic [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr;
-logic [FBUF_DATA_WIDTH - 1 : 0] fbuf_data;
-logic fbuf_rst_req_n;
+
+// Framebuffer AXI connection
+logic [AXI_ADDRESS_WIDTH - 1 : 0] m_axi_fbuf_awaddr;
+logic m_axi_fbuf_awvalid;
+logic m_axi_fbuf_awready = 0;
+
+logic [AXI_DATA_WIDTH - 1 : 0] m_axi_fbuf_wdata;
+logic m_axi_fbuf_wvalid;
+logic m_axi_fbuf_wready = 0;
+
+logic [1:0] m_axi_fbuf_bresp = 0;
+logic m_axi_fbuf_bvalid = 0;
+logic m_axi_fbuf_bready;
 
 axi4_lite_gpu #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
@@ -71,13 +77,22 @@ axi4_lite_gpu #(
     .s_axi_ctrl_bresp(s_axi_ctrl_bresp),
     .s_axi_ctrl_bvalid(s_axi_ctrl_bvalid),
     .s_axi_ctrl_bready(s_axi_ctrl_bready),
-    // Framebuffer connections
-    .fbuf_rst_busy(fbuf_rst_busy),
-    .fbuf_en_wr(fbuf_en_wr),
-    .fbuf_wrea(fbuf_wrea),
-    .fbuf_addr(fbuf_addr),
-    .fbuf_data(fbuf_data),
-    .fbuf_rst_req_n(fbuf_rst_req_n)
+    
+    // AXI global signals
+    .m_axi_fbuf_aclk(clk),
+    .m_axi_fbuf_aresetn(rst_n),
+    // Write address channel
+    .m_axi_fbuf_awaddr(m_axi_fbuf_awaddr),
+    .m_axi_fbuf_awvalid(m_axi_fbuf_awvalid),
+    .m_axi_fbuf_awready(m_axi_fbuf_awready),
+    // Write data channel
+    .m_axi_fbuf_wdata(m_axi_fbuf_wdata),
+    .m_axi_fbuf_wvalid(m_axi_fbuf_wvalid),
+    .m_axi_fbuf_wready(m_axi_fbuf_wready),
+    // Write response channel
+    .m_axi_fbuf_bresp(m_axi_fbuf_bresp),
+    .m_axi_fbuf_bvalid(m_axi_fbuf_bvalid),
+    .m_axi_fbuf_bready(m_axi_fbuf_bready)
 );
 
 task axi4_lite_write(input logic [AXI_ADDRESS_WIDTH - 1 : 0] address, 
@@ -110,6 +125,33 @@ task axi4_lite_write(input logic [AXI_ADDRESS_WIDTH - 1 : 0] address,
     s_axi_ctrl_bready = 0;
 endtask
 
+task axi4_lite_accept_write();
+    while (!m_axi_fbuf_awvalid) begin
+        #10
+        m_axi_fbuf_awready = 0;
+    end
+    $display("AWADDR: %x", m_axi_fbuf_awaddr);
+    m_axi_fbuf_awready = 1;
+    #10
+    m_axi_fbuf_awready = 0;
+    while (!m_axi_fbuf_wvalid) begin
+        #10
+        m_axi_fbuf_awready = 0;
+    end
+    $display("WDATA: %x", m_axi_fbuf_wdata);
+    m_axi_fbuf_wready = 1;
+    #10
+    m_axi_fbuf_wready = 0;
+    m_axi_fbuf_bresp = 0;
+    m_axi_fbuf_bvalid = 1;
+    while (!m_axi_fbuf_bready) begin
+        #10
+        m_axi_fbuf_bvalid = 1;
+    end
+    m_axi_fbuf_bvalid = 0;
+    $display("Write transaction completed");
+endtask
+
 always #5 clk = ~clk;
 
 // All xVALID signals MUST be LOW during reset
@@ -136,8 +178,15 @@ logic [1:0] test_read_responses[4] = '{2'b00, 2'b00, 2'b00, 2'b10};
 
 initial begin
     rst_n = 0;
-    fbuf_rst_busy = 1;
     #100
+    fork
+        #10 $display("Forking AXI4-LITE accept write task");
+        begin
+            for (int i = 0; i < 1000; i++) begin
+                axi4_lite_accept_write();
+            end
+        end
+    join_any
     rst_n = 1;
     #10
     for (int i = 0; i < 4; i++) begin
@@ -159,7 +208,6 @@ initial begin
         s_axi_ctrl_rready = 0;
     end
     #10
-    fbuf_rst_busy = 0;
     $display("Starting single pixel write test...");
     axi4_lite_write(.address(32'h00), .data(32'b00000000011110000000111111100011));
     #10
