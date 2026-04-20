@@ -1,4 +1,5 @@
 module axi4_lite_gpu_decode #(
+    parameter AXI_ADDRESS_WIDTH = 32,
     parameter FRAME_WIDTH_SCALED = 640,
     parameter FRAME_HEIGHT_SCALED = 480,
     parameter ADDRESS_WIDTH = 16,
@@ -28,6 +29,9 @@ module axi4_lite_gpu_decode #(
     output reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr,
     output reg [FBUF_DATA_WIDTH - 1 : 0] fbuf_data,
     output reg fbuf_rst_req_n,
+    //AXI DMA base address output
+    output reg [AXI_ADDRESS_WIDTH - 1 : 0] axi_dma_base_address,
+    output reg axi_dma_base_address_valid,
     // GPU status information to be forwarded to PS when queried
     input ring_buffer_full,
     input ring_buffer_empty
@@ -274,12 +278,13 @@ axi4_lite_gpu_execute_char #(
     .fbuf_data(char_fbuf_data)
 );
 
-enum reg [4:0] {IDLE = 0, BUSY_SINGLE, BUSY_RESET, 
+enum reg [4:0] {IDLE = 0, BUSY_SINGLE, 
                 BUSY_RECT, LOAD_RECT_COORDS_LEFT, LOAD_RECT_COORDS_RIGHT, LOAD_RECT_COLOR,
                 BUSY_TRI, LOAD_TRI_COORDS_XY0, LOAD_TRI_COORDS_XY1, LOAD_TRI_COORDS_XY2, LOAD_TRI_COLOR,
                 BUSY_CIR, LOAD_CIR_COORDS_CENTER, LOAD_CIR_RADIUS, LOAD_CIR_COLOR,
                 BUSY_LINE, LOAD_LINE_COORDS_XY0, LOAD_LINE_COORDS_XY1, LOAD_LINE_COLOR,
-                BUSY_CHAR, LOAD_CHAR_XY, LOAD_CHAR_CODE, LOAD_CHAR_COLOR} execute_unit_state, next_state;
+                BUSY_CHAR, LOAD_CHAR_XY, LOAD_CHAR_CODE, LOAD_CHAR_COLOR,
+                CTRL_AXI_DMA_BASE_ADDR} execute_unit_state, next_state;
 
 assign write_processing_ok = !rst_n ? 0 : (execute_unit_state == IDLE && write_processing_start) ? 1 : 0;
 assign write_processing_done = !rst_n ? 0 : (execute_unit_state == IDLE && write_processing_start) ? 1 : 0;
@@ -303,8 +308,6 @@ always_comb begin
                     case (write_address)
                         32'h00:
                             next_state = BUSY_SINGLE;
-                        32'h04:
-                            next_state = BUSY_RESET;
                         32'h100:
                             next_state = BUSY_RECT;
                         32'h104:
@@ -347,13 +350,11 @@ always_comb begin
                             next_state = LOAD_CHAR_CODE;
                         32'h50C:
                             next_state = LOAD_CHAR_COLOR;
+                        32'hF00:
+                            next_state = CTRL_AXI_DMA_BASE_ADDR;
                     endcase
                 end
             end
-            BUSY_RESET:
-                if (fbuf_rst_busy) begin
-                    next_state = BUSY_RESET;
-                end
             BUSY_RECT:
                 if ((rect_busy || rect_start) && !rect_done && !rect_err) begin
                     next_state = BUSY_RECT;
@@ -442,13 +443,6 @@ assign char_start = (execute_unit_state == BUSY_CHAR) && !char_busy && !char_don
 
 always_comb begin
     case (execute_unit_state)
-        BUSY_RESET: begin
-            fbuf_rst_req_n = write_data_reg == 0; // Only reset if data is non-zero
-            fbuf_en_wr = 0;
-            fbuf_wrea = 0;
-            fbuf_addr = 0;
-            fbuf_data = 0;
-        end
         BUSY_SINGLE: begin
             fbuf_rst_req_n = 1;
             fbuf_en_wr = 1;
@@ -546,6 +540,21 @@ always_ff @(posedge clk) begin
             write_addr_reg <= write_address;
             write_data_reg <= write_data;
             fbuf_single_addr_reg <= write_data[31:20] + write_data[19:8] * FRAME_WIDTH_SCALED;
+        end
+    end
+end
+
+always_ff @(posedge clk) begin
+    if (!rst_n) begin
+        axi_dma_base_address <= 0;
+        axi_dma_base_address_valid <= 0;
+    end else begin
+        if (write_addr_reg == 32'hF00) begin
+            axi_dma_base_address <= write_data_reg;
+            axi_dma_base_address_valid <= 1;
+        end else begin
+            axi_dma_base_address <= 0;
+            axi_dma_base_address_valid <= 0;
         end
     end
 end

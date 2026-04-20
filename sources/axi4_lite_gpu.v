@@ -4,8 +4,7 @@ module axi4_lite_gpu #(
     parameter AXI_ADDRESS_WIDTH = 32,
     parameter AXI_DATA_WIDTH = 32,
     parameter FBUF_ADDR_WIDTH = 19,
-    parameter FBUF_DATA_WIDTH = 8,
-    parameter AXI_DMA_BASE_ADDR = 32'h00
+    parameter FBUF_DATA_WIDTH = 8
 ) (
     // AXI global signals
     input s_axi_ctrl_aclk,
@@ -99,6 +98,9 @@ wire [AXI_DATA_WIDTH - 1:0] decoder_write_data;
 wire ring_buffer_full;
 wire ring_buffer_empty;
 
+wire [AXI_ADDRESS_WIDTH - 1 : 0] axi_dma_base_address;
+wire axi_dma_base_address_valid;
+
 // Framebuffer AXI
 wire fbuf_bus_stalled;
 
@@ -154,7 +156,9 @@ axi4_lite_gpu_decode #(
     .fbuf_data(fbuf_data_int),
     .fbuf_rst_req_n(fbuf_rst_req_n_int),
     .ring_buffer_full(ring_buffer_full),
-    .ring_buffer_empty(ring_buffer_empty)
+    .ring_buffer_empty(ring_buffer_empty),
+    .axi_dma_base_address(axi_dma_base_address),
+    .axi_dma_base_address_valid(axi_dma_base_address_valid)
 );
 
 bram_to_axi4_lite_dma #(
@@ -162,7 +166,6 @@ bram_to_axi4_lite_dma #(
     .BRAM_DATA_WIDTH(FBUF_DATA_WIDTH),
     .AXI_ADDRESS_WIDTH(AXI_ADDRESS_WIDTH),
     .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-    .AXI_DMA_BASE_ADDR(AXI_DMA_BASE_ADDR),
     .BUFFER_SIZE(128)
 ) bram_to_axi4_lite_dma_inst (
     // AXI global signals
@@ -180,6 +183,9 @@ bram_to_axi4_lite_dma #(
     .m_axi_fbuf_bresp(m_axi_fbuf_bresp),
     .m_axi_fbuf_bvalid(m_axi_fbuf_bvalid),
     .m_axi_fbuf_bready(m_axi_fbuf_bready),
+    // AXI DMA base address
+    .axi_dma_base_address(axi_dma_base_address),
+    .axi_dma_base_address_valid(axi_dma_base_address_valid),
 
     // BRAM controller connection (write only)
     .fbuf_bus_stalled(fbuf_bus_stalled),
