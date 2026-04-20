@@ -362,6 +362,15 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \
   master_apm {0} \
 }  [get_bd_intf_pins processing_system7_0/S_AXI_HP2]
 
+assign_bd_address -target_address_space /axi4_lite_gpu_0/m_axi_fbuf [get_bd_addr_segs processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM] -force
+assign_bd_address -target_address_space /axi_vdma_0/Data_MM2S [get_bd_addr_segs processing_system7_0/S_AXI_HP2/HP2_DDR_LOWOCM] -force
+assign_bd_address -target_address_space /processing_system7_0/Data [get_bd_addr_segs axi4_lite_gpu_0/s_axi_ctrl/reg0] -force
+set_property range 8M [get_bd_addr_segs {processing_system7_0/Data/SEG_axi4_lite_gpu_0_reg0}]
+set_property offset 0x40000000 [get_bd_addr_segs {processing_system7_0/Data/SEG_axi4_lite_gpu_0_reg0}]
+assign_bd_address -target_address_space /processing_system7_0/Data [get_bd_addr_segs axi_vdma_0/S_AXI_LITE/Reg] -force
+set_property range 64K [get_bd_addr_segs {processing_system7_0/Data/SEG_axi_vdma_0_Reg}]
+set_property offset 0x83000000 [get_bd_addr_segs {processing_system7_0/Data/SEG_axi_vdma_0_Reg}]
+
 regenerate_bd_layout
 save_bd_design
 write_bd_layout -force -format svg -verbose "${project_folder}/block_design.svg" ; # Needs GUI mode
