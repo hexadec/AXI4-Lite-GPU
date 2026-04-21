@@ -185,7 +185,7 @@ always_ff @(posedge m_axi_fbuf_aclk) begin
         if (state == WR_WRITE_ADDR_DATA || state == WR_WRITE_ADDR_DATA_INCR) begin
             if (state == WR_WRITE_ADDR_DATA_INCR) begin
                 ring_buffer_read_address <= ring_buffer_read_address + 1;
-                m_axi_fbuf_awaddr_reg <= address_ring_buffer[ring_buffer_read_address] + axi_dma_base_address_reg;
+                m_axi_fbuf_awaddr_reg <= (address_ring_buffer[ring_buffer_read_address] << 2) + axi_dma_base_address_reg;
                 m_axi_fbuf_wdata_reg <= data_ring_buffer[ring_buffer_read_address];
             end
             m_axi_fbuf_awvalid_reg <= 1;

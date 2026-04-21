@@ -2,11 +2,14 @@
 #include "sleep.h"
 #include "gpu_driver.h"
 
+uint32_t framebuffer[1920 * 1080] __attribute__((section(".framebuffer")));
+
 int main() {
     init_platform();
     uint32_t height_x_width = Xil_In32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 8);
     uint32_t height = height_x_width >> 16;
     uint32_t width = height_x_width & 0xffff;
+    axi4_lite_gpu_set_fbuf_addr(framebuffer);
     axi4_lite_gpu_draw_rect(0, 0, width - 1, height - 1, 0b11111111U);
     axi4_lite_gpu_draw_rect(4, 4, width - 5, height - 5, 0b00100100U);
     axi4_lite_gpu_draw_triangle(0, 0, width - 1, height - 1, 0, height - 1, 0b00011100U);
