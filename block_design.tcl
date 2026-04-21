@@ -105,8 +105,8 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconn_gp0_2_gpu
 create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconn_gp1_2_vdma
 
 set_property -dict [list \
-  CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {300} \
-  CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {400} \
+  CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {650} \
+  CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {525} \
   CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
   CONFIG.PCW_EN_CLK1_PORT {1} \
   CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {150} \
@@ -293,6 +293,7 @@ connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK1] [get_bd_pins mux_sel
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins clk_wiz_0/resetn]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins test_pattern_generat_0/rst_n]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins axi4_lite_gpu_0/s_axi_ctrl_aresetn]
+connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins axi4_lite_gpu_0/m_axi_fbuf_aresetn]
 connect_bd_net [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins mux_sel_debounce_0/rst_n]
 create_bd_port -dir O -from 3 -to 0 led
 connect_bd_net [get_bd_ports led] [get_bd_pins block_0/out_led]

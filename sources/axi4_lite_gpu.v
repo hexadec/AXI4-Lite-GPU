@@ -54,7 +54,9 @@ module axi4_lite_gpu #(
     // Write response channel
     input [1:0] m_axi_fbuf_bresp,
     input m_axi_fbuf_bvalid,
-    output m_axi_fbuf_bready
+    output m_axi_fbuf_bready,
+    
+    output fbuf_wrea
 );
 
 // Store read address from R channel and manage responses
@@ -104,6 +106,13 @@ wire axi_dma_base_address_valid;
 // Framebuffer AXI
 wire fbuf_bus_stalled;
 
+wire fbuf_en_wr_int;
+wire fbuf_wrea_int;
+wire [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
+wire [FBUF_DATA_WIDTH - 1 : 0] fbuf_data_int;
+
+assign fbuf_wrea = fbuf_en_wr_int;
+
 axi4_lite_gpu_ring_buffer #(
     .ADDRESS_WIDTH(16),
     .DATA_WIDTH(AXI_DATA_WIDTH),
@@ -149,12 +158,10 @@ axi4_lite_gpu_decode #(
     .write_data(decoder_write_data),
     .write_processing_ok(decoder_write_processing_ok),
     .write_processing_done(decoder_write_processing_done),
-    .fbuf_rst_busy(fbuf_rst_busy),
     .fbuf_en_wr(fbuf_en_wr_int),
     .fbuf_wrea(fbuf_wrea_int),
     .fbuf_addr(fbuf_addr_int),
     .fbuf_data(fbuf_data_int),
-    .fbuf_rst_req_n(fbuf_rst_req_n_int),
     .ring_buffer_full(ring_buffer_full),
     .ring_buffer_empty(ring_buffer_empty),
     .axi_dma_base_address(axi_dma_base_address),

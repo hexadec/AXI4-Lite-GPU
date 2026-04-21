@@ -23,12 +23,10 @@ module axi4_lite_gpu_decode #(
     output write_processing_ok,
     output write_processing_done,
     // Framebuffer BRAM connection (write only)
-    input fbuf_rst_busy,
     output reg fbuf_en_wr,
     output reg fbuf_wrea,
     output reg [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr,
     output reg [FBUF_DATA_WIDTH - 1 : 0] fbuf_data,
-    output reg fbuf_rst_req_n,
     //AXI DMA base address output
     output reg [AXI_ADDRESS_WIDTH - 1 : 0] axi_dma_base_address,
     output reg axi_dma_base_address_valid,
@@ -444,49 +442,42 @@ assign char_start = (execute_unit_state == BUSY_CHAR) && !char_busy && !char_don
 always_comb begin
     case (execute_unit_state)
         BUSY_SINGLE: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = 1;
             fbuf_wrea = 1;
             fbuf_data = write_data_reg[7:0];
             fbuf_addr = fbuf_single_addr_reg;
         end
         BUSY_RECT: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = rect_fbuf_en_wr;
             fbuf_wrea = rect_fbuf_wrea;
             fbuf_addr = rect_fbuf_addr;
             fbuf_data = rect_fbuf_data;
         end
         BUSY_TRI: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = tri_fbuf_en_wr;
             fbuf_wrea = tri_fbuf_wrea;
             fbuf_addr = tri_fbuf_addr;
             fbuf_data = tri_fbuf_data;
         end
         BUSY_CIR: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = cir_fbuf_en_wr;
             fbuf_wrea = cir_fbuf_wrea;
             fbuf_addr = cir_fbuf_addr;
             fbuf_data = cir_fbuf_data;
         end
         BUSY_LINE: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = line_fbuf_en_wr;
             fbuf_wrea = line_fbuf_wrea;
             fbuf_addr = line_fbuf_addr;
             fbuf_data = line_fbuf_data;
         end
         BUSY_CHAR: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = char_fbuf_en_wr;
             fbuf_wrea = char_fbuf_wrea;
             fbuf_addr = char_fbuf_addr;
             fbuf_data = char_fbuf_data;
         end
         default: begin
-            fbuf_rst_req_n = 1;
             fbuf_en_wr = 0;
             fbuf_wrea = 0;
             fbuf_addr = 0;
@@ -504,7 +495,7 @@ always_ff @(posedge clk) begin
     end else begin
         if (read_processing_start) begin
             if (read_address == 32'h0) begin // Use 0x00 as status register
-                read_data_reg <= {25'h0, ring_buffer_empty, ring_buffer_full, fbuf_rst_busy, read_processing_start, read_processing_done_reg, write_processing_start, write_processing_done};
+                read_data_reg <= {26'h0, ring_buffer_empty, ring_buffer_full, read_processing_start, read_processing_done_reg, write_processing_start, write_processing_done};
                 read_processing_done_reg <= 1;
                 read_resp_ok_reg <= 1;
             end else if (read_address == 32'h4) begin // Use 0x04 as state register
