@@ -67,12 +67,8 @@ set_property constrset constraints [get_runs impl_1]
 add_files -fileset sources_1 "${project_folder}/sources/block.v"
 add_files -fileset sources_1 "${project_folder}/sources/btn_debounce.v"
 add_files -fileset sources_1 "${project_folder}/sources/fbuf2rgb.v"
-add_files -fileset sources_1 "${project_folder}/sources/framebuffer.sv"
-add_files -fileset sources_1 "${project_folder}/sources/framebuffer_with_reset.v"
-add_files -fileset sources_1 "${project_folder}/sources/framebuffer_mux.v"
 add_files -fileset sources_1 "${project_folder}/sources/bram_to_axi4_lite_dma.sv"
 add_files -fileset sources_1 "${project_folder}/sources/color_converter.v"
-add_files -fileset sources_1 "${project_folder}/sources/test_pattern_generator.v"
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu.v"
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_ring_buffer.sv"
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu_decode.sv"
@@ -98,9 +94,7 @@ add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_c
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_line.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_execute_char.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_axi4_lite_gpu_char_rom.sv"
-add_files -fileset sim_1 "${project_folder}/testbench/tb_framebuffer.sv"
 add_files -fileset sim_1 "${project_folder}/testbench/tb_bram_to_axi4_lite_dma.sv"
-add_files -fileset sim_1 "${project_folder}/testbench/tb_test_pattern_generator.sv"
 update_compile_order -fileset sim_1
 
 add_files -norecurse "${project_folder}/mem/font.mem"

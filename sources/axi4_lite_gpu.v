@@ -4,7 +4,8 @@ module axi4_lite_gpu #(
     parameter AXI_ADDRESS_WIDTH = 32,
     parameter AXI_DATA_WIDTH = 32,
     parameter FBUF_ADDR_WIDTH = 19,
-    parameter FBUF_DATA_WIDTH = 8
+    parameter FBUF_DATA_WIDTH = 24,
+    parameter COLOR_WIDTH = 24
 ) (
     // AXI global signals
     input s_axi_ctrl_aclk,
@@ -54,9 +55,7 @@ module axi4_lite_gpu #(
     // Write response channel
     input [1:0] m_axi_fbuf_bresp,
     input m_axi_fbuf_bvalid,
-    output m_axi_fbuf_bready,
-    
-    output fbuf_wrea
+    output m_axi_fbuf_bready
 );
 
 // Store read address from R channel and manage responses
@@ -111,8 +110,6 @@ wire fbuf_wrea_int;
 wire [FBUF_ADDR_WIDTH - 1 : 0] fbuf_addr_int;
 wire [FBUF_DATA_WIDTH - 1 : 0] fbuf_data_int;
 
-assign fbuf_wrea = fbuf_en_wr_int;
-
 axi4_lite_gpu_ring_buffer #(
     .ADDRESS_WIDTH(16),
     .DATA_WIDTH(AXI_DATA_WIDTH),
@@ -144,7 +141,8 @@ axi4_lite_gpu_decode #(
     .ADDRESS_WIDTH(16),
     .DATA_WIDTH(AXI_DATA_WIDTH),
     .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
-    .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
+    .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH),
+    .COLOR_WIDTH(COLOR_WIDTH)
 ) axi4_lite_gpu_decode_inst(
     .clk(s_axi_ctrl_aclk),
     .rst_n(s_axi_ctrl_aresetn),

@@ -19,20 +19,77 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-// Use 2x-8x upscaling (for bigger resolutions) from framebuffer to limit BRAM use
+// Use 2x-8x upscaling (for bigger resolutions) from framebuffer to prevent memory bandwidth problems
 module fbuf2rgb
 #(
+    parameter AXI_ADDRESS_WIDTH = 32,
+    parameter AXI_DATA_WIDTH = 32,
     parameter FRAME_HEIGHT = 480,
     parameter SCALING_FACTOR = 1,
     parameter FBUF_ADDR_WIDTH = 19,
+    parameter COLOR_WIDTH = 24,
     parameter CONTROL_DELAY = 2 // Compensate for pixel address calculation delay & BRAM access
 ) (
-    input wire clk,
-    input wire rst_n,
-    output wire hsync,
-    output wire vsync,
-    output wire vde,
-    output wire eof,
+
+    // AXI global signals
+    input s_axi_ctrl_aclk,
+    input s_axi_ctrl_aresetn,
+    // Read address channel
+    input [AXI_ADDRESS_WIDTH - 1 : 0] s_axi_ctrl_araddr,
+    input s_axi_ctrl_arvalid,
+    output s_axi_ctrl_arready,
+    // Read data channel
+    output [AXI_DATA_WIDTH - 1 : 0] s_axi_ctrl_rdata,
+    output [1:0] s_axi_ctrl_rresp,
+    output s_axi_ctrl_rvalid,
+    input s_axi_ctrl_rready,
+    // Write address channel
+    input [AXI_ADDRESS_WIDTH - 1 : 0] s_axi_ctrl_awaddr,
+    input s_axi_ctrl_awvalid,
+    output s_axi_ctrl_awready,
+    // Write data channel
+    input [AXI_DATA_WIDTH - 1 : 0] s_axi_ctrl_wdata,
+    input s_axi_ctrl_wvalid,
+    output s_axi_ctrl_wready,
+    // Write response channel
+    output [1:0] s_axi_ctrl_bresp,
+    output s_axi_ctrl_bvalid,
+    input s_axi_ctrl_bready,
+
+    // AXI global signals
+    input m_axi_fbuf_aclk,
+    input m_axi_fbuf_aresetn,
+    // Read address channel
+    output [AXI_ADDRESS_WIDTH - 1 : 0] m_axi_fbuf_araddr,
+    output m_axi_fbuf_arvalid,
+    input m_axi_fbuf_arready,
+    // Read data channel
+    input [AXI_DATA_WIDTH - 1 : 0] m_axi_fbuf_rdata,
+    input [1:0] m_axi_fbuf_rresp,
+    input m_axi_fbuf_rvalid,
+    output m_axi_fbuf_rready,
+    // Write address channel
+    output [AXI_ADDRESS_WIDTH - 1 : 0] m_axi_fbuf_awaddr,
+    output m_axi_fbuf_awvalid,
+    input m_axi_fbuf_awready,
+    // Write data channel
+    output [AXI_DATA_WIDTH - 1 : 0] m_axi_fbuf_wdata,
+    output m_axi_fbuf_wvalid,
+    input m_axi_fbuf_wready,
+    // Write response channel
+    input [1:0] m_axi_fbuf_bresp,
+    input m_axi_fbuf_bvalid,
+    output m_axi_fbuf_bready,
+
+
+    input wire video_clk,
+    input wire video_rst_n,
+    output wire video_hsync,
+    output wire video_vsync,
+    output wire video_vde,
+    output wire video_eof,
+    output wire [COLOR_WIDTH - 1 : 0] video_pixel,
+
     output wire [FBUF_ADDR_WIDTH - 1 : 0] pixel_fbuf_address,
     output wire pixel_fbuf_address_valid,
     output wire [12:0] pixel_x,
@@ -274,8 +331,8 @@ module fbuf2rgb
     reg [12:0] h_counter;
     reg [12:0] v_counter;
     
-    always @(posedge clk) begin
-        if (!rst_n) begin
+    always @(posedge video_clk) begin
+        if (!video_rst_n) begin
             h_counter <= 0;
             v_counter <= 0;
         end else if (h_counter == FRAME_H_TOTAL - 1) begin
@@ -303,8 +360,8 @@ module fbuf2rgb
     
     integer i;
     integer j;
-    always @(posedge clk) begin
-        if (!rst_n) begin
+    always @(posedge video_clk) begin
+        if (!video_rst_n) begin
             vde_int <= 0;
             eof_int <= 0;
             hsync_int <= 0;
@@ -333,15 +390,24 @@ module fbuf2rgb
         end
     end
     
-    assign vde = !rst_n ? 0 : vde_int[CONTROL_DELAY];
-    assign eof = !rst_n ? 0 : eof_int[CONTROL_DELAY];
-    assign hsync = !rst_n ? 0 : hsync_int[CONTROL_DELAY];
-    assign vsync = !rst_n ? 0 : vsync_int[CONTROL_DELAY];
+    assign video_vde = !video_rst_n ? 0 : vde_int[CONTROL_DELAY];
+    assign video_eof = !video_rst_n ? 0 : eof_int[CONTROL_DELAY];
+    assign video_hsync = !video_rst_n ? 0 : hsync_int[CONTROL_DELAY];
+    assign video_vsync = !video_rst_n ? 0 : vsync_int[CONTROL_DELAY];
     
-    assign pixel_x = !rst_n ? 13'b0 : pixel_x_int[CONTROL_DELAY];
-    assign pixel_y = !rst_n ? 13'b0 : pixel_y_int[CONTROL_DELAY];
+    assign pixel_x = !video_rst_n ? 13'b0 : pixel_x_int[CONTROL_DELAY];
+    assign pixel_y = !video_rst_n ? 13'b0 : pixel_y_int[CONTROL_DELAY];
 
-    assign pixel_fbuf_address = !rst_n ? 24'b0 : pixel_fbuf_address_int;
-    assign pixel_fbuf_address_valid = !rst_n ? 0 : pixel_fbuf_address_valid_int;
+    assign pixel_fbuf_address = !video_rst_n ? 24'b0 : pixel_fbuf_address_int;
+    assign pixel_fbuf_address_valid = !video_rst_n ? 0 : pixel_fbuf_address_valid_int;
+
+
+    // AXI framebuffer reader signals
+
+    assign m_axi_fbuf_awaddr = 0;
+    assign m_axi_fbuf_awvalid = 0;
+    assign m_axi_fbuf_wdata = 0;
+    assign m_axi_fbuf_wvalid = 0;
+    assign m_axi_fbuf_bready = 0;
     
 endmodule

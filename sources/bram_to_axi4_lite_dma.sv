@@ -2,7 +2,7 @@ module bram_to_axi4_lite_dma #(
     parameter FRAME_WIDTH_SCALED = 100,
     parameter FRAME_HEIGHT_SCALED = 100,
     parameter BRAM_ADDRESS_WIDTH = 16,
-    parameter BRAM_DATA_WIDTH = 8,
+    parameter BRAM_DATA_WIDTH = 24,
     parameter AXI_ADDRESS_WIDTH = 32,
     parameter AXI_DATA_WIDTH = 32,
     parameter BUFFER_SIZE = 128

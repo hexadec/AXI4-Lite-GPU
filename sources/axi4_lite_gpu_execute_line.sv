@@ -1,9 +1,9 @@
 module axi4_lite_gpu_execute_line #(
     parameter FRAME_WIDTH_SCALED = 640,
     parameter FRAME_HEIGHT_SCALED = 480,
-    parameter COLOR_WIDTH = 8,
+    parameter COLOR_WIDTH = 24,
     parameter FBUF_ADDR_WIDTH = 19,
-    parameter FBUF_DATA_WIDTH = 8
+    parameter FBUF_DATA_WIDTH = 24
 ) (
     input clk,
     input rst_n,

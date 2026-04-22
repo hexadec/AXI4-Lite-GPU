@@ -5,7 +5,8 @@ module axi4_lite_gpu_decode #(
     parameter ADDRESS_WIDTH = 16,
     parameter DATA_WIDTH = 32,
     parameter FBUF_ADDR_WIDTH = 19,
-    parameter FBUF_DATA_WIDTH = 8
+    parameter FBUF_DATA_WIDTH = 24,
+    parameter COLOR_WIDTH = 24
 ) (
     // AXI Clock
     input clk,
@@ -55,7 +56,7 @@ wire rect_err;
 wire rect_left_valid, rect_right_valid;
 wire [11:0] rect_left_x, rect_left_y, rect_right_x, rect_right_y;
 wire rect_color_valid;
-wire [7:0] rect_color;
+wire [COLOR_WIDTH - 1 : 0] rect_color;
 
 wire rect_fbuf_en_wr;
 wire rect_fbuf_wrea;
@@ -65,7 +66,7 @@ wire [FBUF_DATA_WIDTH - 1 : 0] rect_fbuf_data;
 axi4_lite_gpu_execute_rect #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
     .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
-    .COLOR_WIDTH(8),
+    .COLOR_WIDTH(COLOR_WIDTH),
     .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
     .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
 ) axi4_lite_gpu_execute_rect_inst (
@@ -100,7 +101,7 @@ wire tri_err;
 wire tri_xy0_valid, tri_xy1_valid, tri_xy2_valid;
 wire [11:0] tri_x0, tri_y0, tri_x1, tri_y1, tri_x2, tri_y2;
 wire tri_color_valid;
-wire [7:0] tri_color;
+wire [COLOR_WIDTH - 1 : 0] tri_color;
 
 wire tri_fbuf_en_wr;
 wire tri_fbuf_wrea;
@@ -110,7 +111,7 @@ wire [FBUF_DATA_WIDTH - 1 : 0] tri_fbuf_data;
 axi4_lite_gpu_execute_tri #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
     .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
-    .COLOR_WIDTH(8),
+    .COLOR_WIDTH(COLOR_WIDTH),
     .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
     .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
 ) axi4_lite_gpu_execute_tri_inst (
@@ -149,7 +150,7 @@ wire cir_err;
 wire cir_center_valid, cir_radius_valid;
 wire [11:0] cir_center_x, cir_center_y, cir_radius;
 wire cir_color_valid;
-wire [7:0] cir_color;
+wire [COLOR_WIDTH - 1 : 0] cir_color;
 
 wire cir_fbuf_en_wr;
 wire cir_fbuf_wrea;
@@ -159,7 +160,7 @@ wire [FBUF_DATA_WIDTH - 1 : 0] cir_fbuf_data;
 axi4_lite_gpu_execute_cir #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
     .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
-    .COLOR_WIDTH(8),
+    .COLOR_WIDTH(COLOR_WIDTH),
     .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
     .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
 ) axi4_lite_gpu_execute_cir_inst (
@@ -193,7 +194,7 @@ wire line_err;
 wire line_xy0_valid, line_xy1_valid;
 wire [11:0] line_x0, line_y0, line_x1, line_y1;
 wire line_color_valid;
-wire [7:0] line_color;
+wire [COLOR_WIDTH - 1 : 0] line_color;
 
 wire line_fbuf_en_wr;
 wire line_fbuf_wrea;
@@ -203,7 +204,7 @@ wire [FBUF_DATA_WIDTH - 1 : 0] line_fbuf_data;
 axi4_lite_gpu_execute_line #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
     .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
-    .COLOR_WIDTH(8),
+    .COLOR_WIDTH(COLOR_WIDTH),
     .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
     .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
 ) axi4_lite_gpu_execute_line_inst (
@@ -240,7 +241,7 @@ wire [11:0] char_x, char_y;
 wire char_code_valid;
 wire [11:0] char_code;
 wire char_color_valid;
-wire [7:0] char_color;
+wire [COLOR_WIDTH - 1 : 0] char_color;
 
 wire char_fbuf_en_wr;
 wire char_fbuf_wrea;
@@ -250,7 +251,7 @@ wire [FBUF_DATA_WIDTH - 1 : 0] char_fbuf_data;
 axi4_lite_gpu_execute_char #(
     .FRAME_WIDTH_SCALED(FRAME_WIDTH_SCALED),
     .FRAME_HEIGHT_SCALED(FRAME_HEIGHT_SCALED),
-    .COLOR_WIDTH(8),
+    .COLOR_WIDTH(COLOR_WIDTH),
     .FBUF_ADDR_WIDTH(FBUF_ADDR_WIDTH),
     .FBUF_DATA_WIDTH(FBUF_DATA_WIDTH)
 ) axi4_lite_gpu_execute_char_inst (
@@ -386,7 +387,7 @@ assign rect_right_x = write_data_reg[27:16];
 assign rect_right_y = write_data_reg[11:0];
 
 assign rect_color_valid = (execute_unit_state == LOAD_RECT_COLOR);
-assign rect_color = write_data_reg[7:0];
+assign rect_color = write_data_reg[COLOR_WIDTH - 1 : 0];
 
 assign rect_start = (execute_unit_state == BUSY_RECT) && !rect_busy && !rect_done && !rect_err;
 
@@ -401,7 +402,7 @@ assign tri_x2 = write_data_reg[27:16];
 assign tri_y2 = write_data_reg[11:0];
 
 assign tri_color_valid = (execute_unit_state == LOAD_TRI_COLOR);
-assign tri_color = write_data_reg[7:0];
+assign tri_color = write_data_reg[COLOR_WIDTH - 1 : 0];
 
 assign tri_start = (execute_unit_state == BUSY_TRI) && !tri_busy && !tri_done && !tri_err;
 
@@ -412,7 +413,7 @@ assign cir_center_y = write_data_reg[11:0];
 assign cir_radius = write_data_reg[11:0];
 
 assign cir_color_valid = (execute_unit_state == LOAD_CIR_COLOR);
-assign cir_color = write_data_reg[7:0];
+assign cir_color = write_data_reg[COLOR_WIDTH - 1 : 0];
 
 assign cir_start = (execute_unit_state == BUSY_CIR) && !cir_busy && !cir_done && !cir_err;
 
@@ -424,7 +425,7 @@ assign line_x1 = write_data_reg[27:16];
 assign line_y1 = write_data_reg[11:0];
 
 assign line_color_valid = (execute_unit_state == LOAD_LINE_COLOR);
-assign line_color = write_data_reg[7:0];
+assign line_color = write_data_reg[COLOR_WIDTH - 1 : 0];
 
 assign line_start = (execute_unit_state == BUSY_LINE) && !line_busy && !line_done && !line_err;
 
@@ -435,7 +436,7 @@ assign char_y = write_data_reg[11:0];
 assign char_code = write_data_reg[11:0];
 
 assign char_color_valid = (execute_unit_state == LOAD_CHAR_COLOR);
-assign char_color = write_data_reg[7:0];
+assign char_color = write_data_reg[COLOR_WIDTH - 1 : 0];
 
 assign char_start = (execute_unit_state == BUSY_CHAR) && !char_busy && !char_done && !char_err;
 
