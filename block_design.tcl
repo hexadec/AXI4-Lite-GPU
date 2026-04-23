@@ -307,8 +307,11 @@ connect_bd_net [get_bd_pins smartconn_gp1_2_vdma/aresetn] [get_bd_pins proc_sys_
 assign_bd_address -target_address_space /axi4_lite_gpu_0/m_axi_fbuf [get_bd_addr_segs processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM] -force
 assign_bd_address -target_address_space /fbuf2rgb_0/m_axi_fbuf [get_bd_addr_segs processing_system7_0/S_AXI_HP2/HP2_DDR_LOWOCM] -force
 assign_bd_address -target_address_space /processing_system7_0/Data [get_bd_addr_segs axi4_lite_gpu_0/s_axi_ctrl/reg0] -force
+assign_bd_address -target_address_space /processing_system7_0/Data [get_bd_addr_segs fbuf2rgb_0/s_axi_ctrl/reg0] -force
 set_property range 8M [get_bd_addr_segs {processing_system7_0/Data/SEG_axi4_lite_gpu_0_reg0}]
 set_property offset 0x40000000 [get_bd_addr_segs {processing_system7_0/Data/SEG_axi4_lite_gpu_0_reg0}]
+set_property range 8M [get_bd_addr_segs {processing_system7_0/Data/SEG_fbuf2rgb_0_reg0}]
+set_property offset 0x80000000 [get_bd_addr_segs {processing_system7_0/Data/SEG_fbuf2rgb_0_reg0}]
 
 regenerate_bd_layout
 save_bd_design

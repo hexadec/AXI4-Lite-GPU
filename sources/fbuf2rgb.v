@@ -328,8 +328,12 @@ module fbuf2rgb
     localparam FRAME_H_SYNC_END = FRAME_H + FRAME_H_FRONT_PORCH + FRAME_H_SYNC;
     localparam FRAME_V_SYNC_END = FRAME_V + FRAME_V_FRONT_PORCH + FRAME_V_SYNC;
     
+    // TODO: add gray coded counters for CDC fault tolerance
     reg [12:0] h_counter;
     reg [12:0] v_counter;
+
+    reg [COLOR_WIDTH - 1 : 0] line1_buffer [FRAME_V / SCALING_FACTOR - 1 : 0];
+    reg [COLOR_WIDTH - 1 : 0] line2_buffer [FRAME_V / SCALING_FACTOR - 1 : 0];
     
     always @(posedge video_clk) begin
         if (!video_rst_n) begin
@@ -351,6 +355,7 @@ module fbuf2rgb
     reg [CONTROL_DELAY : 0] eof_int;
     reg [CONTROL_DELAY : 0] hsync_int;
     reg [CONTROL_DELAY : 0] vsync_int;
+    reg [COLOR_WIDTH - 1 : 0] pixel_int;
     reg [12:0] pixel_x_int [CONTROL_DELAY : 0];
     reg [12:0] pixel_y_int [CONTROL_DELAY : 0];
     reg [FBUF_ADDR_WIDTH - 1 : 0] pixel_fbuf_address_int;
@@ -366,6 +371,7 @@ module fbuf2rgb
             eof_int <= 0;
             hsync_int <= 0;
             vsync_int <= 0;
+            pixel_int <= 0;
             pixel_fbuf_address_int <= 0;
             pixel_fbuf_address_valid_int <= 0;
             for (i = 0; i < CONTROL_DELAY + 1; i = i + 1) begin
@@ -385,6 +391,13 @@ module fbuf2rgb
                 pixel_x_int[j] <= pixel_x_int[j - 1];
                 pixel_y_int[j] <= pixel_y_int[j - 1];
             end
+
+            if (v_counter % 2 == 0) begin
+                pixel_int <= line1_buffer[h_counter / SCALING_FACTOR];
+            end else begin
+                pixel_int <= line2_buffer[h_counter / SCALING_FACTOR];
+            end
+
             pixel_fbuf_address_int <= vde_int_0 ? (v_counter / SCALING_FACTOR) * FRAME_H / SCALING_FACTOR + (h_counter / SCALING_FACTOR) : 0;
             pixel_fbuf_address_valid_int <= vde_int_0;
         end
@@ -394,6 +407,7 @@ module fbuf2rgb
     assign video_eof = !video_rst_n ? 0 : eof_int[CONTROL_DELAY];
     assign video_hsync = !video_rst_n ? 0 : hsync_int[CONTROL_DELAY];
     assign video_vsync = !video_rst_n ? 0 : vsync_int[CONTROL_DELAY];
+    assign video_pixel = pixel_int;
     
     assign pixel_x = !video_rst_n ? 13'b0 : pixel_x_int[CONTROL_DELAY];
     assign pixel_y = !video_rst_n ? 13'b0 : pixel_y_int[CONTROL_DELAY];
