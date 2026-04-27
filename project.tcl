@@ -67,6 +67,7 @@ set_property constrset constraints [get_runs impl_1]
 add_files -fileset sources_1 "${project_folder}/sources/block.v"
 add_files -fileset sources_1 "${project_folder}/sources/btn_debounce.v"
 add_files -fileset sources_1 "${project_folder}/sources/fbuf2rgb.v"
+add_files -fileset sources_1 "${project_folder}/sources/fbuf2rgb_axi_conf.sv"
 add_files -fileset sources_1 "${project_folder}/sources/bram_to_axi4_lite_dma.sv"
 add_files -fileset sources_1 "${project_folder}/sources/color_converter.v"
 add_files -fileset sources_1 "${project_folder}/sources/axi4_lite_gpu.v"
