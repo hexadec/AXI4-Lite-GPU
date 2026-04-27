@@ -61,11 +61,15 @@ module fbuf2rgb
     input m_axi_fbuf_aresetn,
     // Read address channel
     output [AXI_ADDRESS_WIDTH - 1 : 0] m_axi_fbuf_araddr,
+    output [7:0] m_axi_fbuf_arlen,
+    output [2:0] m_axi_fbuf_arsize,
+    output [1:0] m_axi_fbuf_arburst,
     output m_axi_fbuf_arvalid,
     input m_axi_fbuf_arready,
     // Read data channel
     input [AXI_DATA_WIDTH - 1 : 0] m_axi_fbuf_rdata,
     input [1:0] m_axi_fbuf_rresp,
+    input m_axi_fbuf_rlast,
     input m_axi_fbuf_rvalid,
     output m_axi_fbuf_rready,
     // Write address channel
@@ -327,6 +331,43 @@ module fbuf2rgb
     
     localparam FRAME_H_SYNC_END = FRAME_H + FRAME_H_FRONT_PORCH + FRAME_H_SYNC;
     localparam FRAME_V_SYNC_END = FRAME_V + FRAME_V_FRONT_PORCH + FRAME_V_SYNC;
+
+    wire [AXI_DATA_WIDTH - 1 : 0] framebuffer_dma_offset;
+
+    fbuf2rgb_axi_conf #(
+        .AXI_ADDRESS_WIDTH(AXI_ADDRESS_WIDTH),
+        .AXI_DATA_WIDTH(AXI_DATA_WIDTH)
+    ) fbuf2rgb_axi_conf_inst (
+        .s_axi_ctrl_aclk(s_axi_ctrl_aclk),
+        .s_axi_ctrl_aresetn(s_axi_ctrl_aresetn),
+        // Read address channel
+        .s_axi_ctrl_araddr(s_axi_ctrl_araddr),
+        .s_axi_ctrl_arvalid(s_axi_ctrl_arvalid),
+        .s_axi_ctrl_arready(s_axi_ctrl_arready),
+        // Read data channel
+        .s_axi_ctrl_rdata(s_axi_ctrl_rdata),
+        .s_axi_ctrl_rresp(s_axi_ctrl_rresp),
+        .s_axi_ctrl_rvalid(s_axi_ctrl_rvalid),
+        .s_axi_ctrl_rready(s_axi_ctrl_rready),
+        // Write address channel
+        .s_axi_ctrl_awaddr(s_axi_ctrl_awaddr),
+        .s_axi_ctrl_awvalid(s_axi_ctrl_awvalid),
+        .s_axi_ctrl_awready(s_axi_ctrl_awready),
+        // Write data channel
+        .s_axi_ctrl_wdata(s_axi_ctrl_wdata),
+        .s_axi_ctrl_wvalid(s_axi_ctrl_wvalid),
+        .s_axi_ctrl_wready(s_axi_ctrl_wready),
+        // Write response channel
+        .s_axi_ctrl_bresp(s_axi_ctrl_bresp),
+        .s_axi_ctrl_bvalid(s_axi_ctrl_bvalid),
+        .s_axi_ctrl_bready(s_axi_ctrl_bready),
+        // Registers
+        .framebuffer_dma_offset(framebuffer_dma_offset)
+    );
+
+    // TODO: fbuf2rgb_axi_dma
+    // If line is finished: load next line from memory (IF: M_AXI_FBUF, line1, line2, gray_h_counter (for blank period), gray_v_counter)
+    // Needs full AXI4 support
     
     // TODO: add gray coded counters for CDC fault tolerance
     reg [12:0] h_counter;
