@@ -27,7 +27,7 @@ module fbuf2rgb
     parameter FRAME_HEIGHT = 480,
     parameter SCALING_FACTOR = 1,
     parameter FBUF_ADDR_WIDTH = 19,
-    parameter COLOR_WIDTH = 24,
+    parameter COLOR_WIDTH = 8,
     parameter CONTROL_DELAY = 2 // Compensate for pixel address calculation delay & BRAM access
 ) (
 
@@ -93,9 +93,8 @@ module fbuf2rgb
     output wire video_vde,
     output wire video_eof,
     output wire [COLOR_WIDTH - 1 : 0] video_pixel,
+    output wire video_pixel_valid,
 
-    output wire [FBUF_ADDR_WIDTH - 1 : 0] pixel_fbuf_address,
-    output wire pixel_fbuf_address_valid,
     output wire [12:0] pixel_x,
     output wire [12:0] pixel_y
     );
@@ -373,6 +372,9 @@ module fbuf2rgb
     reg [12:0] h_counter;
     reg [12:0] v_counter;
 
+    reg [12:0] h_counter_gray;
+    reg [12:0] v_counter_gray;
+
     reg [COLOR_WIDTH - 1 : 0] line1_buffer [FRAME_V / SCALING_FACTOR - 1 : 0];
     reg [COLOR_WIDTH - 1 : 0] line2_buffer [FRAME_V / SCALING_FACTOR - 1 : 0];
     
@@ -391,6 +393,17 @@ module fbuf2rgb
             h_counter <= h_counter + 1;
         end
     end
+
+    // There will be a 1 clock cycle delay between normal and gray counter
+    always @(posedge video_clk) begin
+        if (!video_rst_n) begin
+            h_counter_gray <= 0;
+            v_counter_gray <= 0;
+        end else begin
+            h_counter_gray <= h_counter ^ h_counter[11:0];
+            v_counter_gray <= v_counter ^ v_counter[11:0];
+        end
+    end
     
     reg [CONTROL_DELAY : 0] vde_int;
     reg [CONTROL_DELAY : 0] eof_int;
@@ -399,8 +412,8 @@ module fbuf2rgb
     reg [COLOR_WIDTH - 1 : 0] pixel_int;
     reg [12:0] pixel_x_int [CONTROL_DELAY : 0];
     reg [12:0] pixel_y_int [CONTROL_DELAY : 0];
-    reg [FBUF_ADDR_WIDTH - 1 : 0] pixel_fbuf_address_int;
-    reg pixel_fbuf_address_valid_int;
+    reg [COLOR_WIDTH - 1 : 0] video_pixel_int;
+    reg video_pixel_valid_int;
     
     assign vde_int_0 = h_counter < FRAME_H && v_counter < FRAME_V;
     
@@ -413,8 +426,8 @@ module fbuf2rgb
             hsync_int <= 0;
             vsync_int <= 0;
             pixel_int <= 0;
-            pixel_fbuf_address_int <= 0;
-            pixel_fbuf_address_valid_int <= 0;
+            video_pixel_int <= 0;
+            video_pixel_valid_int <= 0;
             for (i = 0; i < CONTROL_DELAY + 1; i = i + 1) begin
                 pixel_x_int[i] <= 0;
                 pixel_y_int[i] <= 0;
@@ -433,14 +446,13 @@ module fbuf2rgb
                 pixel_y_int[j] <= pixel_y_int[j - 1];
             end
 
-            if (v_counter % 2 == 0) begin
-                pixel_int <= line1_buffer[h_counter / SCALING_FACTOR];
+            if ((v_counter / SCALING_FACTOR) % 2 == 0) begin
+                video_pixel_int <= line1_buffer[h_counter / SCALING_FACTOR];
             end else begin
-                pixel_int <= line2_buffer[h_counter / SCALING_FACTOR];
+                video_pixel_int <= line2_buffer[h_counter / SCALING_FACTOR];
             end
 
-            pixel_fbuf_address_int <= vde_int_0 ? (v_counter / SCALING_FACTOR) * FRAME_H / SCALING_FACTOR + (h_counter / SCALING_FACTOR) : 0;
-            pixel_fbuf_address_valid_int <= vde_int_0;
+            video_pixel_valid_int <= vde_int_0;
         end
     end
     
@@ -448,13 +460,11 @@ module fbuf2rgb
     assign video_eof = !video_rst_n ? 0 : eof_int[CONTROL_DELAY];
     assign video_hsync = !video_rst_n ? 0 : hsync_int[CONTROL_DELAY];
     assign video_vsync = !video_rst_n ? 0 : vsync_int[CONTROL_DELAY];
-    assign video_pixel = pixel_int;
+    assign video_pixel = !video_rst_n ? 0 : video_pixel_int;
+    assign video_pixel_valid = !video_rst_n ? 0 : video_pixel_valid_int;
     
     assign pixel_x = !video_rst_n ? 13'b0 : pixel_x_int[CONTROL_DELAY];
     assign pixel_y = !video_rst_n ? 13'b0 : pixel_y_int[CONTROL_DELAY];
-
-    assign pixel_fbuf_address = !video_rst_n ? 24'b0 : pixel_fbuf_address_int;
-    assign pixel_fbuf_address_valid = !video_rst_n ? 0 : pixel_fbuf_address_valid_int;
 
 
     // AXI framebuffer reader signals
