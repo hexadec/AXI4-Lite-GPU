@@ -405,6 +405,116 @@ module fbuf2rgb
         end
     end
     
+
+
+    reg [12:0] h_counter_axi, h_counter_gray_axi, h_counter_scaled_axi;
+    reg [12:0] v_counter_axi, v_counter_gray_axi, v_counter_scaled_axi;
+    reg [12:0] line1_v_axi, line_1_received_h_axi;
+    reg [12:0] line2_v_axi, line_2_received_h_axi;
+    reg [12:0] tmp_next_line1_axi, tmp_next_line2_axi;
+    
+    integer i;
+
+    always @(posedge m_axi_fbuf_aclk) begin
+        if (!m_axi_fbuf_aresetn) begin
+            h_counter_axi <= 0;
+            v_counter_axi <= 0;
+            h_counter_gray_axi <= 0;
+            v_counter_gray_axi <= 0;
+            h_counter_scaled_axi <= 0;
+            v_counter_scaled_axi <= 0;
+        end else begin
+            h_counter_gray_axi <= h_counter_gray;
+            v_counter_gray_axi <= v_counter_gray;
+            // Ternary operator to ignore possible sudden jumps when toggling to 0
+            h_counter_scaled_axi <= h_counter_axi >= FRAME_H_TOTAL ? h_counter_scaled_axi : h_counter_axi / SCALING_FACTOR;
+            v_counter_scaled_axi <= v_counter_axi >= FRAME_V_TOTAL ? v_counter_scaled_axi : v_counter_axi / SCALING_FACTOR;
+
+            for (i = 0; i < 12; i = i + 1) begin
+                h_counter_axi[i] <= ^(h_counter_gray_axi >> i);
+                v_counter_axi[i] <= ^(v_counter_gray_axi >> i);
+            end
+        end
+    end
+
+    reg [2:0] state, next_state;
+
+    always @(posedge m_axi_fbuf_aclk) begin
+        if (!m_axi_fbuf_aresetn) begin
+            state <= 3'b000;
+        end else begin
+            state <= next_state;
+        end
+    end
+
+    always @(*) begin
+        if (!m_axi_fbuf_aresetn) begin
+            next_state = 3'b000;
+        end else begin
+            if (state == 3'b000) begin // LINE_1_WAIT_LOAD
+                if (v_counter_scaled_axi >= line1_v_axi && h_counter_scaled_axi >= FRAME_H / SCALING_FACTOR) begin
+                    next_state = 3'b001;
+                end else begin
+                    next_state = 3'b000;
+                end
+            end else if (state == 3'b001) begin // LINE_1_PREPARE_LOAD
+                next_state = 3'b010;
+            end else if (state == 3'b010) begin // LINE_1_LOAD
+                if (line_1_received_h_axi < FRAME_H / SCALING_FACTOR) begin
+                    next_state = 3'b010;
+                end else begin
+                    next_state = 3'b100;
+                end
+            end else if (state == 3'b100) begin // LINE_2_WAIT_LOAD
+                if (v_counter_scaled_axi >= line2_v_axi && h_counter_scaled_axi >= FRAME_H / SCALING_FACTOR) begin
+                    next_state = 3'b101;
+                end else begin
+                    next_state = 3'b100;
+                end
+            end else if (state == 3'b101) begin // LINE_2_PREPARE_LOAD
+                next_state = 3'b110;
+            end else if (state == 3'b110) begin // LINE_2_LOAD
+                if (line_2_received_h_axi < FRAME_H / SCALING_FACTOR) begin
+                    next_state = 3'b110;
+                end else begin
+                    next_state = 3'b000;
+                end
+            end else begin
+                next_state = 3'b00;
+            end
+        end
+    end
+
+    always @(posedge m_axi_fbuf_aclk) begin
+        if (!m_axi_fbuf_aresetn) begin 
+            line1_v_axi <= 0;
+            line2_v_axi <= 1;
+            line_1_received_h_axi <= 0;
+            line_2_received_h_axi <= 0;
+            tmp_next_line1_axi <= 2;
+            tmp_next_line2_axi <= 3;
+        end else begin
+            if (state == 3'b000) begin
+                tmp_next_line1_axi[12:1] <= (v_counter_scaled_axi + 3) >> 1;
+                tmp_next_line1_axi[0] <= 0;
+            end else if (state == 3'b001) begin
+                line1_v_axi <= tmp_next_line1_axi < FRAME_V / SCALING_FACTOR ? tmp_next_line1_axi : 0;
+                line_1_received_h_axi <= 0;
+            end else if (state == 3'b010) begin
+                // TODO COMMAND TO READ FROM AXI DMA AND MANAGE READ POSITION
+            end else if (state == 3'b100) begin
+                tmp_next_line2_axi[12:1] <= (v_counter_scaled_axi + 2) >> 1;
+                tmp_next_line2_axi[0] <= 1;
+            end else if (state == 3'b101) begin
+                line2_v_axi <= tmp_next_line2_axi < FRAME_V / SCALING_FACTOR ? tmp_next_line2_axi : 1;
+                line_2_received_h_axi <= 0;
+            end else if (state == 3'b110) begin
+                // TODO COMMAND TO READ FROM AXI DMA AND MANAGE READ POSITION
+            end
+        end
+    end
+
+    
     reg [CONTROL_DELAY : 0] vde_int;
     reg [CONTROL_DELAY : 0] eof_int;
     reg [CONTROL_DELAY : 0] hsync_int;

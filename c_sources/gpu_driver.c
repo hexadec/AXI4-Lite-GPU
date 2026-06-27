@@ -66,4 +66,5 @@ void axi4_lite_gpu_draw_pixel(uint16_t x, uint16_t y, uint8_t color) {
 
 void axi4_lite_gpu_set_fbuf_addr(uint32_t * base_addr) {
     Xil_Out32(XPAR_AXI4_LITE_GPU_0_BASEADDR + 0xF00, (uint32_t) base_addr);
+    Xil_Out32(XPAR_FBUF2RGB_0_BASEADDR, (uint32_t) base_addr);
 }
