@@ -14,13 +14,13 @@ logic [12:0] v_counter = 0;
 logic [12:0] h_counter_gray;
 logic [12:0] v_counter_gray;
 
-logic [12:0] line1_addr;
-logic [COLOR_WIDTH - 1 : 0] line1_data;
-logic line1_wrea;
+logic [31:0] framebuffer_offset_addr;
+logic [15:0] framebuffer_data_len;
+logic framebuffer_transfer_start;
+logic line_buffer_index;
 
-logic [12:0] line2_addr;
-logic [COLOR_WIDTH - 1 : 0] line2_data;
-logic line2_wrea;
+logic framebuffer_transfer_start_ack = 0;
+logic framebuffer_transfer_done = 0;
 
 fbuf2rgb_line_buffer_writer #(
     .COLOR_WIDTH(COLOR_WIDTH),
@@ -34,12 +34,12 @@ fbuf2rgb_line_buffer_writer #(
     .rst_n(rst_n),
     .h_counter_gray(h_counter_gray),
     .v_counter_gray(v_counter_gray),
-    .line1_addr(line1_addr),
-    .line1_data(line1_data),
-    .line1_wrea(line1_wrea),
-    .line2_addr(line2_addr),
-    .line2_data(line2_data),
-    .line2_wrea(line2_wrea)
+    .framebuffer_offset_addr(framebuffer_offset_addr),
+    .framebuffer_data_len(framebuffer_data_len),
+    .framebuffer_transfer_start(framebuffer_transfer_start),
+    .line_buffer_index(line_buffer_index),
+    .framebuffer_transfer_start_ack(framebuffer_transfer_start_ack),
+    .framebuffer_transfer_done(framebuffer_transfer_done)
 );
 
 always #5 clk = ~clk;

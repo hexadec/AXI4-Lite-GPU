@@ -331,6 +331,8 @@ module fbuf2rgb
     localparam FRAME_H_SYNC_END = FRAME_H + FRAME_H_FRONT_PORCH + FRAME_H_SYNC;
     localparam FRAME_V_SYNC_END = FRAME_V + FRAME_V_FRONT_PORCH + FRAME_V_SYNC;
 
+    // AXI4-LITE Slave interface for configuring the framebuffer
+
     wire [AXI_DATA_WIDTH - 1 : 0] framebuffer_dma_offset;
 
     fbuf2rgb_axi_conf #(
@@ -364,17 +366,17 @@ module fbuf2rgb
         .framebuffer_dma_offset(framebuffer_dma_offset)
     );
 
-    // TODO: fbuf2rgb_axi_dma
-    // If line is finished: load next line from memory (IF: M_AXI_FBUF, line1, line2, gray_h_counter (for blank period), gray_v_counter)
-    // Needs full AXI4 support
+    // Module for controlling fbuf2rgb_axi_dma
 
-    wire [12:0] line1_addr;
-    wire [COLOR_WIDTH - 1 : 0] line1_data;
-    wire line1_wrea;
+    reg [12:0] h_counter_gray;
+    reg [12:0] v_counter_gray;
 
-    wire [12:0] line2_addr;
-    wire [COLOR_WIDTH - 1 : 0] line2_data;
-    wire line2_wrea;
+    wire [31:0] framebuffer_offset_addr;
+    wire [15:0] framebuffer_data_len;
+    wire framebuffer_transfer_start;
+    wire line_buffer_index;
+    wire framebuffer_transfer_start_ack;
+    wire framebuffer_transfer_done;
 
     fbuf2rgb_line_buffer_writer #(
         .COLOR_WIDTH(COLOR_WIDTH),
@@ -386,33 +388,85 @@ module fbuf2rgb
     ) fbuf2rgb_line_buffer_writer_inst (
         .clk(m_axi_fbuf_aclk),
         .rst_n(m_axi_fbuf_aresetn),
-        .line1_addr(line1_addr),
-        .line1_data(line1_data),
-        .line1_wrea(line1_wrea),
-        .line2_addr(line2_addr),
-        .line2_data(line2_data),
-        .line2_wrea(line2_wrea),
+        .h_counter_gray(h_counter_gray),
+        .v_counter_gray(v_counter_gray),
+        // Control channel between fbuf2rgb_axi_dma and fbuf2rgb_line_buffer_writer
+        .framebuffer_offset_addr(framebuffer_offset_addr),
+        .framebuffer_data_len(framebuffer_data_len),
+        .framebuffer_transfer_start(framebuffer_transfer_start),
+        .line_buffer_index(line_buffer_index),
+        .framebuffer_transfer_start_ack(framebuffer_transfer_start_ack),
+        .framebuffer_transfer_done(framebuffer_transfer_done)
     );
-    
-    // TODO: add gray coded counters for CDC fault tolerance
-    reg [12:0] h_counter;
-    reg [12:0] v_counter;
 
-    reg [12:0] h_counter_gray;
-    reg [12:0] v_counter_gray;
+    // TODO: fbuf2rgb_axi_dma
+    // If line is finished: load next line from memory (IF: M_AXI_FBUF, line1, line2, gray_h_counter (for blank period), gray_v_counter)
+    // Needs full AXI4 support
+
+    wire [12:0] line_buffer_wraddr;
+    wire [COLOR_WIDTH - 1 : 0] line_buffer_wrdata;
+    wire line_buffer_wrea;
 
     reg [COLOR_WIDTH - 1 : 0] line1_buffer [FRAME_V / SCALING_FACTOR - 1 : 0];
     reg [COLOR_WIDTH - 1 : 0] line2_buffer [FRAME_V / SCALING_FACTOR - 1 : 0];
+
+    fbuf2rgb_axi_dma #(
+        .AXI_ADDRESS_WIDTH(AXI_ADDRESS_WIDTH),
+        .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+        .COLOR_WIDTH(COLOR_WIDTH)
+    ) fbuf2rgb_axi_dma_inst (
+        .m_axi_fbuf_aclk(m_axi_fbuf_aclk),
+        .m_axi_fbuf_aresetn(m_axi_fbuf_aresetn),
+        // Read address channel
+        .m_axi_fbuf_araddr(m_axi_fbuf_araddr),
+        .m_axi_fbuf_arvalid(m_axi_fbuf_arvalid),
+        .m_axi_fbuf_arready(m_axi_fbuf_arready),
+        // Read data channel
+        .m_axi_fbuf_rdata(m_axi_fbuf_rdata),
+        .m_axi_fbuf_rresp(m_axi_fbuf_rresp),
+        .m_axi_fbuf_rvalid(m_axi_fbuf_rvalid),
+        .m_axi_fbuf_rready(m_axi_fbuf_rready),
+        // Write address channel
+        .m_axi_fbuf_awaddr(m_axi_fbuf_awaddr),
+        .m_axi_fbuf_awvalid(m_axi_fbuf_awvalid),
+        .m_axi_fbuf_awready(m_axi_fbuf_awready),
+        // Write data channel
+        .m_axi_fbuf_wdata(m_axi_fbuf_wdata),
+        .m_axi_fbuf_wvalid(m_axi_fbuf_wvalid),
+        .m_axi_fbuf_wready(m_axi_fbuf_wready),
+        // Write response channel
+        .m_axi_fbuf_bresp(m_axi_fbuf_bresp),
+        .m_axi_fbuf_bvalid(m_axi_fbuf_bvalid),
+        .m_axi_fbuf_bready(m_axi_fbuf_bready),
+        // Control channel between fbuf2rgb_axi_dma and fbuf2rgb_line_buffer_writer
+        .framebuffer_offset_addr(framebuffer_offset_addr),
+        .framebuffer_data_len(framebuffer_data_len),
+        .framebuffer_transfer_start(framebuffer_transfer_start),
+        .framebuffer_transfer_start_ack(framebuffer_transfer_start_ack),
+        .framebuffer_transfer_done(framebuffer_transfer_done),
+        // Framebuffer line buffer write channel
+        .line_buffer_wraddr(line_buffer_wraddr),
+        .line_buffer_wrdata(line_buffer_wrdata),
+        .line_buffer_wrea(line_buffer_wrea)
+    );
+
+    // Main part of fbuf2rgb.v
+    
+    reg [12:0] h_counter;
+    reg [12:0] v_counter;
 
     always @(posedge m_axi_fbuf_aclk) begin
         if (!m_axi_fbuf_aresetn) begin
 
         end else begin
-            if (line1_wrea) begin
-                line1_buffer[line1_addr] <= line1_data;
-            end
-            if (line2_wrea) begin
-                line2_buffer[line2_addr] <= line2_data;
+            if (line_buffer_index) begin
+                if (line_buffer_wrea) begin
+                    line1_buffer[line_buffer_wraddr] <= line_buffer_wrdata;
+                end
+            end else begin
+                if (line_buffer_wrea) begin
+                    line2_buffer[line_buffer_wraddr] <= line_buffer_wrdata;
+                end
             end
         end
     end
@@ -454,7 +508,8 @@ module fbuf2rgb
     reg [COLOR_WIDTH - 1 : 0] video_pixel_int;
     reg video_pixel_valid_int;
     
-    // TODO assign vde_int_0 = h_counter < FRAME_H && v_counter < FRAME_V;
+    wire vde_int_0;
+    assign vde_int_0 = h_counter < FRAME_H && v_counter < FRAME_V;
     
     integer i;
     integer j;
